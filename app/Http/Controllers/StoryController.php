@@ -12,7 +12,36 @@ class StoryController extends Controller
      */
     public function index()
     {
-        //
+        try {
+            $stories = Story::join('users', 'stories.user_id', '=', 'users.id')
+            ->join('categories', 'stories.category_id', '=', 'categories.id')
+            ->select('stories.*', 'users.name as user_name', 'categories.name as category_name')
+            ->orderBy('stories.created_at', 'desc')
+            ->get();
+            
+            if ($stories->isEmpty()) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'Belum ada story. Ayo buat story baru!',
+                ], 404);
+            }
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'data' => $stories,
+                'message' => 'Stories berhasil di dapatkan',
+            ], 200);
+        } catch (\Exception $e){
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'data' => null,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
