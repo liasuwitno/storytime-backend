@@ -19,7 +19,7 @@ Route::post('/login', [UserController::class, 'login']);
 Route::post('/register', [UserController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function(){
-    Route::post('/upload-file/{folder}', [UploadFileController::class, 'upload-file']);
+    Route::post('/upload-file/{folder}', [UploadFileController::class, 'uploadFile']);
     Route::put('/update-profile/{unique_id}', [UserController::class, 'update']);
     Route::apiResource('categories', CategoryController::class);
 });

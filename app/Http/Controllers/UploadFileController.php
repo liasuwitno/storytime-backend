@@ -17,7 +17,7 @@ public function uploadFile(Request $request, string $folder)
                     'required',
                     'file',
                     'max:1024',
-                    'mimes:jpg,jpeg,png,webp',
+                    'mimes:jpg,jpeg,png,webp,svg',
                     function ($attribute, $value, $fail) {
                         $mimeType = mime_content_type($value->getRealPath());
                         $validMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];

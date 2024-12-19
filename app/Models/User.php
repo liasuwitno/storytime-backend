@@ -23,6 +23,7 @@ class User extends Authenticatable
         'fullname',
         'email',
         'avatar',
+        'bio',
         'status',
         'is_deleted',
         'password',

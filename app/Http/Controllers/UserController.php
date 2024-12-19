@@ -144,7 +144,6 @@ class UserController extends Controller
         try {
             $request->validate(
                 [
-                    'username' => 'required|string|max:80|unique:users,username,' . $unique_id,
                     'fullname' => 'required|string|max:100',
                     'old_password' => 'required|string|min:8',
                     'new_password' => 'required|string|confirmed|min:8',
@@ -152,12 +151,36 @@ class UserController extends Controller
                     'avatar' => 'nullable|string'
                 ],
                 [
-                    'username.required' => 'Username tidak boleh kosong',
                     'fullname.required' => 'Fullname tidak boleh kosong',
                     'old_password.required' => 'Password lama harus di isi',
                     'new_password.required' => 'Masukkan password baru anda'
                 ]
             );
+            $user = User::where('unique_id', $unique_id)->firstOrFail();
+
+            if (!Hash::check($request->old_password, $user->password)) {
+                return response()->json([
+                    'code' => 422,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'Old Password tidak sesuai, periksa lagi!'
+                ], 422);
+            };
+
+            $user->update([
+                'fullname'=> $request->fullname,
+                'password'=> $request->new_password ? Hash::make($request->new_password) : $user->password,
+                'bio'=> $request->bio,
+                'avatar'=> $request->avatar
+            ]);
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'data' => null,
+                'message' => 'Profile berhasil di update',
+            ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
