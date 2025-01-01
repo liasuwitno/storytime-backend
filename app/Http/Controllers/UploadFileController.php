@@ -18,9 +18,9 @@ public function uploadFile(Request $request, string $folder)
                     'file',
                     'max:1024',
                     'mimes:jpg,jpeg,png,webp,svg',
-                    function ($attribute, $value, $fail) {
+                    function ($attribute, $value, $fail) { //pengecekan apakah file yang dikirim adalah gambar
                         $mimeType = mime_content_type($value->getRealPath());
-                        $validMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+                        $validMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'image/svg'];
 
                         if (!in_array($mimeType, $validMimeTypes)) {
                             $fail('The ' . $attribute . ' must be a valid image.');
@@ -44,6 +44,7 @@ public function uploadFile(Request $request, string $folder)
 
             // Membuat nama file baru dengan menggunakan Cuid yang akan digunakan sebagai nama file
             $fileName = Cuid::make();
+            
             // Menyimpan file yang diupload ke dalam `folder(Folder ini bentuk dinamis bisa jadi user, story dll)` yang ditentukan dengan nama file yang baru dan ekstensi file yang diupload oleh user
             $resultFile = $file->storeAs($folder, "{$fileName}.{$file->extension()}");
 

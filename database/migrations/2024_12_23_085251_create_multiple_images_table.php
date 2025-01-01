@@ -4,8 +4,6 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-use function Laravel\Prompts\text;
-
 return new class extends Migration
 {
     /**
@@ -13,15 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('stories', function (Blueprint $table) {
+        Schema::create('multiple_images', function (Blueprint $table) {
             $table->id();
-            $table->string('unique_id')->unique();
-            $table->string('title');
-            $table->text('slug');
-            $table->text('body');
-            $table->string('images');
-            $table->boolean('is_deleted');
+            $table->string('related_unique_id');
+            $table->string('related_type');           
+            $table->text('image_url');
+            $table->string('identifier')->nullable();           
             $table->timestamps();
+
+            $table->index(['related_unique_id', 'related_type']);
         });
     }
 
@@ -30,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('stories');
+        Schema::dropIfExists('multiple_images');
     }
 };

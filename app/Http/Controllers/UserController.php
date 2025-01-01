@@ -98,11 +98,12 @@ class UserController extends Controller
             User::create([
                 'unique_id' => Cuid::make(),
                 'fullname' => $request->fullname,
+                'slug' => str()->slug($request->fullname),
                 'username' => strtolower($request->username),
                 'email' => strtolower($request->email),
                 'password' => Hash::make($request->password),
 
-            ]); 
+            ]);
 
             return response()->json([
                 'status' => 'success',
@@ -137,8 +138,8 @@ class UserController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
-        
     }
+
     public function update(Request $request, string $unique_id)
     {
         try {
@@ -168,10 +169,10 @@ class UserController extends Controller
             };
 
             $user->update([
-                'fullname'=> $request->fullname,
-                'password'=> $request->new_password ? Hash::make($request->new_password) : $user->password,
-                'bio'=> $request->bio,
-                'avatar'=> $request->avatar
+                'fullname' => $request->fullname,
+                'password' => $request->new_password ? Hash::make($request->new_password) : $user->password,
+                'bio' => $request->bio,
+                'avatar' => $request->avatar
             ]);
 
             return response()->json([
@@ -180,13 +181,46 @@ class UserController extends Controller
                 'data' => null,
                 'message' => 'Profile berhasil di update',
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
                 'data' => null,
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function profileUser(string $unique_id)
+    {
+        try {
+            // Cari user berdasarkan unique_id
+            $user = User::where('unique_id', $unique_id)->first();
+
+            // Jika user tidak ditemukan, kembalikan error
+            if (!$user) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'User tidak ditemukan.',
+                ], 404);
+            }
+
+            // Jika ditemukan, kembalikan data user
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'data' => $user,
+                'message' => 'Profil user berhasil diambil.',
+            ], 200);
+        } catch (\Exception $e) {
+            // Jika ada error lain, kembalikan respons error
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'data' => null,
+                'message' => $e->getMessage(),
             ], 500);
         }
     }

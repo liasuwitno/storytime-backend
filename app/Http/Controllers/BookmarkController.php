@@ -12,7 +12,32 @@ class BookmarkController extends Controller
      */
     public function index()
     {
-        //
+        try {
+            $bookmarks = Bookmark::all();
+
+            if ($bookmarks->isEmpty()) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'Belum ada bookmark / bookmark tidak ditemukan'
+                ], 404);
+            }
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'data' => $bookmarks,
+                'message' => 'Bookmarks berhasil didapatkan',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'data' => null,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -26,10 +51,53 @@ class BookmarkController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function toggleBookmark(Request $request)
     {
-        //
+        try {
+            $validatedData = $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'story_id' => 'required|exists:stories,id',
+            ]);
+
+            // Cek apakah bookmark sudah ada
+            $bookmark = Bookmark::where([
+                'user_id' => $validatedData['user_id'],
+                'story_id' => $validatedData['story_id'],
+            ])->first();
+
+            if ($bookmark) {
+                // Jika sudah ada, hapus
+                $bookmark->delete();
+                return response()->json([
+                    'code' => 200,
+                    'status' => 'success',
+                    'message' => 'Bookmark berhasil dihapus.',
+                ], 200);
+            } else {
+                // Jika belum ada, tambahkan
+                Bookmark::create($validatedData);
+                return response()->json([
+                    'code' => 200,
+                    'status' => 'success',
+                    'message' => 'Bookmark berhasil ditambahkan.',
+                ], 200);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 422,
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
+
+
 
     /**
      * Display the specified resource.
