@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('title');
             $table->text('slug');
             $table->text('body');
-            $table->string('images');
             $table->boolean('is_deleted');
             $table->timestamps();
         });

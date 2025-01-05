@@ -15,7 +15,6 @@ class Story extends Model
         'category_id',
         'slug',
         'body',
-        'images',
         'is_deleted',
     ];
 }
