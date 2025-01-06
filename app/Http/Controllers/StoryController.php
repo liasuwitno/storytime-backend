@@ -131,7 +131,9 @@ class StoryController extends Controller
                             'related_unique_id' => $story->unique_id,
                             'related_type' => Story::class,
                             'image_url' => $imageUrl,
-                            'identifier' => $request->identifier
+                            'identifier' => $request->identifier,
+                            'created_at' => now(),
+                            'updated_at' => now()
                         ];
                     }
 
