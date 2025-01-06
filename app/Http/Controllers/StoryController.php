@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\MultipleImage;
 use Illuminate\Support\Str;
 use App\Models\Story;
@@ -90,6 +91,60 @@ class StoryController extends Controller
     {
         //
     }
+
+
+    public function getStoriesByCategory()
+    {
+        try {
+            // Ambil data kategori dengan join ke tabel stories dan users
+            $categories = Category::select('id', 'name')
+                ->with(['stories' => function ($query) {
+                    $query->join('users', 'stories.user_id', '=', 'users.id')
+                        ->select(
+                            'stories.id as story_id',
+                            'stories.title',
+                            'stories.body',
+                            'stories.category_id',
+                            'stories.created_at',
+                            'users.fullname as author_name',
+                            'users.avatar as author_avatar'
+                        );
+                }])->get();
+
+            // Format data agar sesuai dengan struktur JSON yang diinginkan
+            $formattedData = $categories->map(function ($category) {
+                return [
+                    'category_id' => $category->id,
+                    'category_name' => $category->name,
+                    'stories' => $category->stories->map(function ($story) {
+                        return [
+                            'story_id' => $story->story_id,
+                            'title' => $story->title,
+                            'author' => [
+                                'name' => $story->author_name,
+                                'avatar' => $story->author_avatar,
+                            ],
+                            'content' => $story->body,
+                            'created_at' => $story->created_at->toIso8601String(),
+                        ];
+                    }),
+                ];
+            });
+
+            // Kirim response dalam format JSON
+            return response()->json([
+                'data' => $formattedData,
+            ], 200);
+        } catch (\Exception $e) {
+            // Tangani error jika ada
+            return response()->json([
+                'message' => 'Terjadi kesalahan saat mengambil data cerita.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
 
     /**
      * Store a newly created resource in storage.

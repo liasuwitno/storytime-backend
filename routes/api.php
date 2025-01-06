@@ -23,6 +23,7 @@ Route::get('/health', function () {
         'data' => null
     ], 200);
 });
+Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']);
 
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'store'])->name('register');
