@@ -17,12 +17,12 @@ use App\Http\Controllers\UserController;
 |
 */
 
-// Route::get('/health', function () {
-//     return response()->json([
-//         'message' => 'Aku lia dan ... masih hidup yo.',
-//         'data' => null
-//     ], 200);
-// });
+Route::get('/health', function () {
+    return response()->json([
+        'message' => 'Aku lia dan ... masih hidup yo.',
+        'data' => null
+    ], 200);
+});
 
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'store'])->name('register');
