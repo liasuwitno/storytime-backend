@@ -13,6 +13,7 @@ public function uploadFile(Request $request, string $folder)
     {
         try {
             $request->validate([
+                'idetifier' => 'required|string',
                 'file' => [
                     'required',
                     'file',
@@ -56,7 +57,8 @@ public function uploadFile(Request $request, string $folder)
                 'code' => 200,
                 'status' => 'success',
                 'data' => [
-                    'url' => $baseUrl
+                    'url' => $baseUrl,
+                    'identifier' => $request->identifier,
                 ],
                 'message' => 'File berhasil di upload'
             ], 200);

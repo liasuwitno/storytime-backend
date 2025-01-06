@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MultipleImage;
 use Illuminate\Support\Str;
 use App\Models\Story;
+use CaliCastle\Cuid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -100,19 +101,20 @@ class StoryController extends Controller
             $validatedData = $request->validate([
                 'title' => 'required|string|max:255',
                 'body' => 'required|string',
+                'identifier' => 'required|string',
                 'images' => 'nullable|array',
                 'images.*' => 'nullable|url:http,https', // Validasi untuk setiap URL gambar
                 'category_id' => 'required|exists:categories,id',
             ]);
 
             // Buat slug dari title
-            
+
             DB::transaction(function () use ($request, $validatedData) {
                 $slug = Str::slug($validatedData['title']);
 
                 // Simpan story ke database
                 $story = Story::create([
-                    'unique_id' => Str::uuid()->toString(),
+                    'unique_id' => Cuid::make(),
                     'title' => $validatedData['title'],
                     'slug' => $slug,
                     'body' => $validatedData['body'],
@@ -129,6 +131,7 @@ class StoryController extends Controller
                             'related_unique_id' => $story->unique_id,
                             'related_type' => Story::class,
                             'image_url' => $imageUrl,
+                            'identifier' => $request->identifier
                         ];
                     }
 
@@ -163,10 +166,11 @@ class StoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $unique_id)
+    public function show(string $slug)
     {
         try {
-            $story = Story::where('unique_id', $unique_id)->first();
+            // Cari story berdasarkan slug
+            $story = Story::where('slug', $slug)->first();
 
             if (!$story) {
                 return response()->json([
@@ -177,31 +181,32 @@ class StoryController extends Controller
                 ], 404);
             }
 
+            // Cari similar stories berdasarkan kategori, kecuali story saat ini
             $similarStories = Story::where('category_id', $story->category_id)
-            ->where('unique_id', '!=', $unique_id) // Hindari story itu sendiri
-            ->limit(5) // Batasi jumlah similar stories
-            ->get();
+                ->where('id', '!=', $story->id) // Hindari story itu sendiri
+                ->limit(5) // Batasi jumlah similar stories
+                ->get();
 
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
                 'data' => [
-                'story' => $story,
-                'similar_stories' => $similarStories,
-            ],
+                    'story' => $story,
+                    'similar_stories' => $similarStories,
+                ],
                 'message' => 'Data Story berhasil diambil.',
             ], 200);
-
         } catch (\Exception $e) {
 
             return response()->json([
                 'code' => 500,
-                'status' =>'error',
+                'status' => 'error',
                 'data' => null,
                 'message' => $e->getMessage(),
             ], 500);
         }
     }
+
 
     /**
      * Show the form for editing the specified resource.
@@ -215,85 +220,88 @@ class StoryController extends Controller
      * Update the specified resource in storage.
      */
     public function update(Request $request, $unique_id)
-{
-    try {
-        // Validasi input
-        $validatedData = $request->validate([
-            'title' => 'required|string|max:255',
-            'body' => 'required|string',
-            'images' => 'nullable|array',
-            'images.*' => 'nullable|url',
-            'category_id' => 'required|exists:categories,id',
-        ]);
+    {
+        try {
+            // Validasi input
+            $validatedData = $request->validate([
+                'title' => 'required|string|max:255',
+                'body' => 'required|string',
+                'images' => 'required|array',
+                'images.*' => 'required|url',
+                'category_id' => 'required|exists:categories,id',
+            ]);
 
-        // Cari story berdasarkan unique_id
-        $story = Story::where('unique_id', $unique_id)->first();
+            // Cari story berdasarkan unique_id
+            $story = Story::where('unique_id', $unique_id)->first();
 
-        if (!$story) {
+            if (!$story) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'Story tidak ditemukan.',
+                ], 404);
+            }
+
+            // Perbarui data story
+            $story->update([
+                'title' => $validatedData['title'],
+                'slug' => Str::slug($validatedData['title']),
+                'body' => $validatedData['body'],
+                'category_id' => $validatedData['category_id'],
+            ]);
+
+            // Perbarui multiple images jika ada
+            if (isset($validatedData['images'])) {
+                $existingImages = MultipleImage::where('related_unique_id', $story->unique_id)
+                    ->where('related_type', Story::class)
+                    ->pluck('image_url')
+                    ->toArray();
+
+                $newImages = $validatedData['images'];
+
+                // Hapus gambar yang tidak ada di newImages
+                MultipleImage::where('related_unique_id', $story->unique_id)
+                    ->where('related_type', Story::class)
+                    ->whereNotIn('image_url', $newImages)
+                    ->delete();
+
+                // Tambahkan gambar yang belum ada di existingImages
+                $currentMultipleImages = [];
+                foreach (array_diff($newImages, $existingImages) as $imageUrl) {
+                    $currentMultipleImages = [
+                        'related_unique_id' => $story->unique_id,
+                        'related_type' => Story::class,
+                        'image_url' => $imageUrl,
+                    ];
+                }
+
+                MultipleImage::insert($currentMultipleImages);
+            }
+
             return response()->json([
-                'code' => 404,
+                'code' => 200,
+                'status' => 'success',
+                'data' => $story,
+                'message' => 'Story berhasil diperbarui.',
+            ], 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'code' => 422,
                 'status' => 'error',
                 'data' => null,
-                'message' => 'Story tidak ditemukan.',
-            ], 404);
+                'message' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Error updating story: ' . $e->getMessage());
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'data' => null,
+                'message' => 'Terjadi kesalahan, coba lagi nanti.',
+            ], 500);
         }
-
-        // Perbarui data story
-        $story->update([
-            'title' => $validatedData['title'],
-            'slug' => Str::slug($validatedData['title']),
-            'body' => $validatedData['body'],
-            'category_id' => $validatedData['category_id'],
-        ]);
-
-        // Perbarui multiple images jika ada
-        if (isset($validatedData['images'])) {
-            $existingImages = MultipleImage::where('related_unique_id', $story->unique_id)
-                ->where('related_type', Story::class)
-                ->pluck('image_url')
-                ->toArray();
-
-            $newImages = $validatedData['images'];
-
-            // Hapus gambar yang tidak ada di newImages
-            MultipleImage::where('related_unique_id', $story->unique_id)
-                ->where('related_type', Story::class)
-                ->whereNotIn('image_url', $newImages)
-                ->delete();
-
-            // Tambahkan gambar yang belum ada di existingImages
-            foreach (array_diff($newImages, $existingImages) as $imageUrl) {
-                MultipleImage::create([
-                    'related_unique_id' => $story->unique_id,
-                    'related_type' => Story::class,
-                    'image_url' => $imageUrl,
-                ]);
-            }
-        }
-
-        return response()->json([
-            'code' => 200,
-            'status' => 'success',
-            'data' => $story,
-            'message' => 'Story berhasil diperbarui.',
-        ], 200);
-    } catch (\Illuminate\Validation\ValidationException $e) {
-        return response()->json([
-            'code' => 422,
-            'status' => 'error',
-            'data' => null,
-            'message' => $e->errors(),
-        ], 422);
-    } catch (\Exception $e) {
-        Log::error('Error updating story: ' . $e->getMessage());
-        return response()->json([
-            'code' => 500,
-            'status' => 'error',
-            'data' => null,
-            'message' => 'Terjadi kesalahan, coba lagi nanti.',
-        ], 500);
     }
-}
 
 
 

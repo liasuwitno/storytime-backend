@@ -20,13 +20,13 @@ use App\Http\Controllers\UserController;
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'store'])->name('register');
 
-Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function(){
+Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     Route::post('/upload-file/{folder}', [UploadFileController::class, 'uploadFile']);
     Route::put('/update-profile/{unique_id}', [UserController::class, 'update']);
     Route::apiResource('categories', CategoryController::class);
     Route::post('/logout', [UserController::class, 'logout']);
     Route::post('/create-story', [StoryController::class, 'store']);
-    Route::get('/story-detail/{unique_id}', [StoryController::class, 'show']);
+    Route::get('/story-detail/{slug}', [StoryController::class, 'show']);
     Route::put('/edit-story/{unique_id}', [StoryController::class, 'update']);
     Route::get('/user/{unique_id}', [UserController::class, 'profileUser']);
 });
