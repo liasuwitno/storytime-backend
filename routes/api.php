@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookmarkController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\StoryController;
@@ -37,4 +38,5 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     Route::get('/story-detail/{slug}', [StoryController::class, 'show']);
     Route::put('/edit-story/{unique_id}', [StoryController::class, 'update']);
     Route::get('/user/{unique_id}', [UserController::class, 'profileUser']);
+    Route::post('/bookmark-list', [BookmarkController::class, 'toggleBookmark']);
 });
