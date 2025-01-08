@@ -103,6 +103,7 @@ class StoryController extends Controller
                         ->select(
                             'stories.id as story_id',
                             'stories.title',
+                            'stories.slug',
                             'stories.body',
                             'stories.category_id',
                             'stories.created_at',
@@ -110,6 +111,16 @@ class StoryController extends Controller
                             'users.avatar as author_avatar'
                         );
                 }])->get();
+
+            // HANDLING WHEN STORY IS EMPTY
+            if ($categories->isEmpty()) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'Belum ada story. Ayo buat story baru!',
+                ], 404);
+            }
 
             // Format data agar sesuai dengan struktur JSON yang diinginkan
             $formattedData = $categories->map(function ($category) {
