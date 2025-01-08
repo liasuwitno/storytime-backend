@@ -25,14 +25,13 @@ Route::get('/health', function () {
     ], 200);
 });
 Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']);
-
+Route::apiResource('categories', CategoryController::class);
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'store'])->name('register');
 
 Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     Route::post('/upload-file/{folder}', [UploadFileController::class, 'uploadFile']);
     Route::put('/update-profile/{unique_id}', [UserController::class, 'update']);
-    Route::apiResource('categories', CategoryController::class);
     Route::post('/logout', [UserController::class, 'logout']);
     Route::post('/create-story', [StoryController::class, 'store']);
     Route::get('/story-detail/{slug}', [StoryController::class, 'show']);

@@ -9,9 +9,12 @@ class Category extends Model
 {
     use HasFactory;
     protected $fillable = ['name'];
-    
+
+    // Model: Category.php
     public function stories()
     {
-        return $this->hasMany(Story::class, 'category_id', 'id');
+        return $this->hasMany(Story::class)
+            ->orderBy('created_at', 'desc')
+            ->take(3);
     }
 }

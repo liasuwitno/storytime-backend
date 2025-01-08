@@ -96,7 +96,7 @@ class StoryController extends Controller
     public function getStoriesByCategory()
     {
         try {
-            // Ambil data kategori dengan join ke tabel stories dan users
+            // Ambil data kategori dengan maksimal 3 stories per kategori
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
                     $query->join('users', 'stories.user_id', '=', 'users.id')
@@ -148,6 +148,8 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
+
 
 
 
@@ -379,7 +381,7 @@ class StoryController extends Controller
                     'code' => 404,
                     'status' => 'error',
                     'data' => [
-                        'kk'=> $unique_id,
+                        'kk' => $unique_id,
                         'hh' => $request->user()->unique_id
                     ],
                     'message' => 'Story tidak ditemukan atau Anda tidak memiliki izin untuk menghapusnya.',
