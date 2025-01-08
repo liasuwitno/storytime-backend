@@ -133,13 +133,18 @@ class StoryController extends Controller
 
             // Kirim response dalam format JSON
             return response()->json([
+                'code' => 200,
+                'status' => 'success',
                 'data' => $formattedData,
+                'message' => 'Berhasil mendapatkan data stories'
             ], 200);
         } catch (\Exception $e) {
             // Tangani error jika ada
             return response()->json([
-                'message' => 'Terjadi kesalahan saat mengambil data cerita.',
-                'error' => $e->getMessage(),
+                'code' => 500,
+                'status' => 'error',
+                'data'=> null,
+                'message' => $e->getMessage()
             ], 500);
         }
     }
