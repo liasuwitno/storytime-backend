@@ -40,4 +40,6 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     Route::get('/user/{unique_id}', [UserController::class, 'profileUser']);
     Route::post('/bookmark', [BookmarkController::class, 'toggleBookmark']);
     Route::get('/bookmark-list', [BookmarkController::class, 'index']);
+    Route::delete('/story-delete/{unique_id}', [StoryController::class, 'deleteStory']);
+
 });

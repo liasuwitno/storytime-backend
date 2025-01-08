@@ -143,7 +143,7 @@ class StoryController extends Controller
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
-                'data'=> null,
+                'data' => null,
                 'message' => $e->getMessage()
             ], 500);
         }
@@ -365,6 +365,46 @@ class StoryController extends Controller
         }
     }
 
+    public function deleteStory(Request $request, $unique_id)
+    {
+        try {
+            // Cari story berdasarkan unique_id dan user_id yang sedang login
+            $story = Story::where('unique_id', $unique_id)
+                ->where('user_id', $request->user()->id) // Validasi kepemilikan
+                ->where('is_deleted', 0) // Pastikan story belum dihapus
+                ->first();
+
+            if (!$story) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => [
+                        'kk'=> $unique_id,
+                        'hh' => $request->user()->unique_id
+                    ],
+                    'message' => 'Story tidak ditemukan atau Anda tidak memiliki izin untuk menghapusnya.',
+                ], 404);
+            }
+
+            // Update kolom is_deleted
+            $story->is_deleted = 1;
+            $story->save();
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'message' => 'Story berhasil dihapus.',
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat menghapus story.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
     /**
@@ -372,38 +412,6 @@ class StoryController extends Controller
      */
     public function destroy($id)
     {
-        try {
-            // Cari story berdasarkan ID
-            $story = Story::find($id);
-
-            // Jika story tidak ditemukan
-            if (!$story) {
-                return response()->json([
-                    'code' => 404,
-                    'status' => 'error',
-                    'data' => null,
-                    'message' => 'Story tidak ditemukan.',
-                ], 404);
-            }
-
-            // Update is_deleted menjadi true
-            $story->update(['is_deleted' => true]);
-
-            // Respons sukses
-            return response()->json([
-                'code' => 200,
-                'status' => 'success',
-                'data' => null,
-                'message' => 'Story berhasil dihapus.',
-            ], 200);
-        } catch (\Exception $e) {
-            // Respons jika ada error
-            return response()->json([
-                'code' => 500,
-                'status' => 'error',
-                'data' => null,
-                'message' => $e->getMessage(),
-            ], 500);
-        }
+        //
     }
 }
