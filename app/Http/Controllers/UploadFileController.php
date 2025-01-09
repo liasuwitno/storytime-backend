@@ -9,61 +9,72 @@ use Illuminate\Validation\ValidationException;
 
 class UploadFileController extends Controller
 {
-public function uploadFile(Request $request, string $folder)
+    public function uploadFile(Request $request, string $folder)
     {
         try {
+            // Validasi input
             $request->validate([
-                'idetifier' => 'required|string',
-                'file' => [
+                'files' => [
                     'required',
+                    'array',
+                    'min:1', // Minimal 1 file
+                ],
+                'files.*' => [
                     'file',
                     'max:1024',
                     'mimes:jpg,jpeg,png,webp,svg',
-                    function ($attribute, $value, $fail) { //pengecekan apakah file yang dikirim adalah gambar
-                        $mimeType = mime_content_type($value->getRealPath());
-                        $validMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'image/svg'];
-
-                        if (!in_array($mimeType, $validMimeTypes)) {
-                            $fail('The ' . $attribute . ' must be a valid image.');
-                        }
-                    }
                 ],
+                'type' => 'required|string|in:image,document', // Sesuaikan jenis type
+                'identifier' => 'required|string|max:80', // Identifier
+            ], [
+                'type.in' => 'The type must be either image or document',
+                'files.*.file' => 'Each uploaded file must be a valid file',
             ]);
 
-            // $file ini akan berisi file yang diupload oleh user
-            $file = $request->file('file');
+            // Ambil semua file
+            $files = $request->file('files');
 
-            // Jika file yang diupload tidak valid maka akan mengembalikan response error 422
-            if (!$file->isValid()) {
-                return response()->json([
-                    'code' => 422,
-                    'status' => 'error',
-                    'data' => null,
-                    'message' => 'File tidak valid'
-                ], 422);
+            // Prefix nama file
+            $prefixName = $request->type === 'image' ? "IMG_" : "DOC_";
+            $prefix = $prefixName . str()->slug($request->identifier);
+
+            // Tempat untuk menyimpan URL file
+            $uploadedFiles = [];
+
+            // Proses setiap file
+            foreach ($files as $file) {
+                if (!$file->isValid()) {
+                    return response()->json([
+                        'code' => 422,
+                        'status' => 'error',
+                        'data' => null,
+                        'message' => 'Salah satu file tidak valid'
+                    ], 422);
+                }
+
+                // Generate nama file unik
+                $fileName = "{$prefix}_" . uniqid() . ".{$file->extension()}";
+
+                // Simpan file ke direktori yang ditentukan
+                $resultFile = $file->storeAs($folder, $fileName);
+                $baseUrl = Storage::url($resultFile);
+
+                // Tambahkan URL ke array hasil
+                $uploadedFiles[] = $baseUrl;
             }
 
-            // Membuat nama file baru dengan menggunakan Cuid yang akan digunakan sebagai nama file
-            $fileName = Cuid::make();
-            
-            // Menyimpan file yang diupload ke dalam `folder(Folder ini bentuk dinamis bisa jadi user, story dll)` yang ditentukan dengan nama file yang baru dan ekstensi file yang diupload oleh user
-            $resultFile = $file->storeAs($folder, "{$fileName}.{$file->extension()}");
-
-            // Mengambil URL dari full dari file yang diupload, URL ini akan digunakan untuk menampilkan file yang diupload oleh user
-            $baseUrl = Storage::url($resultFile);
-
-            // Mengembalikan response berupa JSON yang berisi data file yang diupload oleh user
+            // Response berhasil
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
                 'data' => [
-                    'url' => $baseUrl,
+                    'urls' => $uploadedFiles, // Semua URL file
                     'identifier' => $request->identifier,
                 ],
-                'message' => 'File berhasil di upload'
+                'message' => 'Semua file berhasil diupload'
             ], 200);
         } catch (ValidationException $e) {
-            // SEBUAH VALIDASI JIKA FILE YANG DIUPLOAD TIDAK SESUAI DENGAN YANG DIIZINKAN
+            // Validasi gagal
             return response()->json([
                 'code' => 422,
                 'status' => 'error',
@@ -71,7 +82,7 @@ public function uploadFile(Request $request, string $folder)
                 'message' => $e->getMessage()
             ], 422);
         } catch (\Exception $e) {
-            // SEBUAH VALIDASI JIKA TERJADI ERROR LAINNYA
+            // Error lainnya
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
@@ -80,5 +91,4 @@ public function uploadFile(Request $request, string $folder)
             ], 500);
         }
     }
-
 }
