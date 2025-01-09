@@ -22,8 +22,14 @@ class Story extends Model
     {
         return $this->belongsTo(Category::class, 'category_id', 'id');
     }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'unique_id');
+    }
+
+    public function images()
+    {
+        return $this->morphMany(MultipleImage::class, 'related', 'related_type', 'related_unique_id', 'unique_id');
     }
 }

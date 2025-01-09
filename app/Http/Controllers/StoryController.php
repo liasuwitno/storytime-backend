@@ -93,15 +93,86 @@ class StoryController extends Controller
     }
 
 
+    // LIA CODE OLD
+    // public function getStoriesByCategory()
+    // {
+    //     try {
+    //         // Ambil data kategori dengan maksimal 3 stories per kategori
+    //         $categories = Category::select('id', 'name')
+    //             ->with(['stories' => function ($query) {
+    //                 $query->join('users', 'stories.user_id', '=', 'users.id')
+    //                     ->select(
+    //                         'stories.id as story_id',
+    //                         'stories.title',
+    //                         'stories.slug',
+    //                         'stories.body',
+    //                         'stories.category_id',
+    //                         'stories.created_at',
+    //                         'users.fullname as author_name',
+    //                         'users.avatar as author_avatar'
+    //                     );
+    //             }])->get();
+
+    //         // HANDLING WHEN STORY IS EMPTY
+    //         if ($categories->isEmpty()) {
+    //             return response()->json([
+    //                 'code' => 404,
+    //                 'status' => 'error',
+    //                 'data' => null,
+    //                 'message' => 'Belum ada story. Ayo buat story baru!',
+    //             ], 404);
+    //         }
+
+    //         // Format data agar sesuai dengan struktur JSON yang diinginkan
+    //         $formattedData = $categories->map(function ($category) {
+    //             return [
+    //                 'category_id' => $category->id,
+    //                 'category_name' => $category->name,
+    //                 'stories' => $category->stories->map(function ($story) {
+    //                     return [
+    //                         'story_id' => $story->story_id,
+    //                         'title' => $story->title,
+    //                         'author' => [
+    //                             'name' => $story->author_name,
+    //                             'avatar' => $story->author_avatar,
+    //                         ],
+    //                         'content' => $story->body,
+    //                         'created_at' => $story->created_at->toIso8601String(),
+    //                     ];
+    //                 }),
+    //             ];
+    //         });
+
+    //         // Kirim response dalam format JSON
+    //         return response()->json([
+    //             'code' => 200,
+    //             'status' => 'success',
+    //             'data' => $formattedData,
+    //             'message' => 'Berhasil mendapatkan data stories'
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         // Tangani error jika ada
+    //         return response()->json([
+    //             'code' => 500,
+    //             'status' => 'error',
+    //             'data' => null,
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    // LIA CODE NEW
     public function getStoriesByCategory()
     {
         try {
             // Ambil data kategori dengan maksimal 3 stories per kategori
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
-                    $query->join('users', 'stories.user_id', '=', 'users.id')
+                    $query->with('images')  // Eager load images using polymorphic relationship
+                        ->join('users', 'stories.user_id', '=', 'users.id')
                         ->select(
                             'stories.id as story_id',
+                            'stories.unique_id',
                             'stories.title',
                             'stories.slug',
                             'stories.body',
@@ -110,7 +181,8 @@ class StoryController extends Controller
                             'users.fullname as author_name',
                             'users.avatar as author_avatar'
                         );
-                }])->get();
+                }])
+                ->get();
 
             // HANDLING WHEN STORY IS EMPTY
             if ($categories->isEmpty()) {
@@ -136,6 +208,12 @@ class StoryController extends Controller
                                 'avatar' => $story->author_avatar,
                             ],
                             'content' => $story->body,
+                            'images' => $story->images->map(function ($image) {
+                                return [
+                                    'url' => $image->image_url,
+                                    'identifier' => $image->identifier
+                                ];
+                            }),
                             'created_at' => $story->created_at->toIso8601String(),
                         ];
                     }),
@@ -159,10 +237,6 @@ class StoryController extends Controller
             ], 500);
         }
     }
-
-
-
-
 
     /**
      * Store a newly created resource in storage.
