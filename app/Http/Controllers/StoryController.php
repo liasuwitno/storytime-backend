@@ -203,6 +203,7 @@ class StoryController extends Controller
                         return [
                             'story_id' => $story->story_id,
                             'title' => $story->title,
+                            'slug' => $story->slug,
                             'author' => [
                                 'name' => $story->author_name,
                                 'avatar' => $story->author_avatar,
