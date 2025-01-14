@@ -24,21 +24,15 @@ class UploadFileController extends Controller
                     'max:1024',
                     'mimes:jpg,jpeg,png,webp,svg',
                 ],
-                'type' => 'required|string|in:image,document', // Sesuaikan jenis type
-                'identifier' => 'required|string|max:80', // Identifier
+                'identifier' => 'required|string|max:80', // Identifier untuk file
             ], [
-                'type.in' => 'The type must be either image or document',
                 'files.*.file' => 'Each uploaded file must be a valid file',
             ]);
 
             // Ambil semua file
             $files = $request->file('files');
 
-            // Prefix nama file
-            $prefixName = $request->type === 'image' ? "IMG_" : "DOC_";
-            $prefix = $prefixName . str()->slug($request->identifier);
-
-            // Tempat untuk menyimpan URL file
+            // Tempat untuk menyimpan URL file yang berhasil diupload
             $uploadedFiles = [];
 
             // Proses setiap file
@@ -52,8 +46,8 @@ class UploadFileController extends Controller
                     ], 422);
                 }
 
-                // Generate nama file unik
-                $fileName = "{$prefix}_" . uniqid() . ".{$file->extension()}";
+                // Generate nama file menggunakan Cuid
+                $fileName = Cuid::make() . ".{$file->extension()}";
 
                 // Simpan file ke direktori yang ditentukan
                 $resultFile = $file->storeAs($folder, $fileName);
