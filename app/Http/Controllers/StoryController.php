@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreStoryRequest;
+use App\Http\Requests\UpdateStoryRequest;
 use App\Models\Category;
 use App\Models\MultipleImage;
 use Illuminate\Support\Str;
@@ -242,22 +244,12 @@ class StoryController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreStoryRequest $request)
     {
         try {
             // Validasi input
-            $validatedData = $request->validate([
-                'title' => 'required|string|max:255',
-                'body' => 'required|string',
-                'identifier' => 'required|string',
-                'images' => 'nullable|array',
-                'images.*' => 'nullable|url:http,https', // Validasi untuk setiap URL gambar
-                'category_id' => 'required|exists:categories,id',
-            ]);
-
-            // Buat slug dari title
-
-            DB::transaction(function () use ($request, $validatedData) {
+            DB::transaction(function () use ($request) {
+                $validatedData = $request->validated();
                 $slug = Str::slug($validatedData['title']);
 
                 // Simpan story ke database
@@ -369,17 +361,11 @@ class StoryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $unique_id)
+    public function update(UpdateStoryRequest $request, $unique_id)
     {
         try {
             // Validasi input
-            $validatedData = $request->validate([
-                'title' => 'required|string|max:255',
-                'body' => 'required|string',
-                'images' => 'required|array',
-                'images.*' => 'required|url',
-                'category_id' => 'required|exists:categories,id',
-            ]);
+            $validatedData = $request->validated();
 
             // Cari story berdasarkan unique_id
             $story = Story::where('unique_id', $unique_id)->first();
