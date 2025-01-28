@@ -15,7 +15,12 @@ class BookmarkController extends Controller
         try {
 
             $user = auth()->user();
-            $bookmarks = Bookmark::where('user_id', auth()->id())->get();
+
+            // Pastikan user diizinkan mengakses bookmark
+            $this->authorize('viewAny', Bookmark::class);
+
+            // Ambil semua bookmark milik user yang login
+            $bookmarks = Bookmark::where('user_id', $user->unique_id)->get();
 
             if ($bookmarks->isEmpty()) {
                 return response()->json([
@@ -64,6 +69,15 @@ class BookmarkController extends Controller
 
             // Ambil user yang sedang login
             $user = auth()->user();
+
+            // Pastikan user diizinkan menambahkan bookmark
+            $this->authorize('create', Bookmark::class);
+
+            // Cek apakah bookmark sudah ada
+            $bookmark = Bookmark::where([
+                'user_id' => $user->unique_id,
+                'story_id' => $validatedData['story_id'],
+            ])->first();
 
             // Cek apakah user_id yang dikirimkan sesuai dengan unique_id pengguna yang sedang login
             if ($user->unique_id !== $validatedData['user_id']) {
@@ -123,12 +137,7 @@ class BookmarkController extends Controller
      */
     public function show(Bookmark $bookmark)
     {
-        $this->authorize('view', $bookmark);
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $bookmark,
-        ]);
+        //
     }
 
     /**

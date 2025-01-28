@@ -14,7 +14,6 @@ class StoryPolicy
     public function viewAny(User $user): bool
     {
         return true;
-
     }
 
     /**
@@ -22,9 +21,14 @@ class StoryPolicy
      */
     public function view(User $user, Story $story): bool
     {
-        return true;
+        return $user->id === $story->user_id;
     }
 
+    public function userHasStories(User $user, Story $story): bool
+    {
+        // Cek apakah story dimiliki oleh user
+        return $user->id === $story->user_id;
+    }
     /**
      * Determine whether the user can create models.
      */

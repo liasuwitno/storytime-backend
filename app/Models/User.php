@@ -38,6 +38,16 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+    public function stories()
+    {
+        return $this->hasMany(Story::class);
+    }
+
+    // Fungsi hasStories
+    public function hasStories()
+    {
+        return $this->stories()->exists();
+    }
 
     /**
      * The attributes that should be cast.

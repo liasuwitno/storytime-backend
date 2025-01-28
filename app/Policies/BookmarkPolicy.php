@@ -13,25 +13,25 @@ class BookmarkPolicy
     /**
      * Determine whether the user can view any models.
      */
-    // public function viewAny(User $user): bool
-    // {
-    //     //
-    // }
+    public function viewAny(User $user): bool
+    {
+        return true;  
+    }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Bookmark $bookmark): bool
-    {
-        return $user->id === $bookmark->user_id;
-    }
+    // public function view(User $user, Bookmark $bookmark): bool
+    // {
+        
+    // }
 
     /**
      * Determine whether the user can create models.
      */
     public function create(User $user): bool
     {
-        return $user !== null; 
+        return $user->id !== null;
     }
 
     /**
