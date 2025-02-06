@@ -231,39 +231,41 @@ class StoryController extends Controller
     public function store(StoreStoryRequest $request)
     {
         try {
+            $validatedData = $request->validated();
+
             // Validasi input
-            DB::transaction(function () use ($request) {
-                $validatedData = $request->validated();
-                $slug = Str::slug($validatedData['title']);
+            DB::beginTransaction();
+            $slug = Str::slug($validatedData['title']);
 
-                // Simpan story ke database
-                $story = Story::create([
-                    'unique_id' => Cuid::make(),
-                    'title' => $validatedData['title'],
-                    'slug' => $slug,
-                    'body' => $validatedData['body'],
-                    'user_id' => auth()->id(), // Ambil ID user yang sedang login
-                    'category_id' => $validatedData['category_id'],
-                    'is_deleted' => false,
-                ]);
+            // Simpan story ke database
+            $story = Story::create([
+                'unique_id' => Cuid::make(),
+                'title' => $validatedData['title'],
+                'slug' => $slug,
+                'body' => $validatedData['body'],
+                'user_id' => auth()->id(), // Ambil ID user yang sedang login
+                'category_id' => $validatedData['category_id'],
+                'is_deleted' => false
+            ]);
 
-                $contentImage = [];
-                // Simpan multiple images jika ada
-                if (isset($validatedData['images'])) {
-                    foreach ($validatedData['images'] as $imageUrl) {
-                        $contentImage = [
-                            'related_unique_id' => $story->unique_id,
-                            'related_type' => Story::class,
-                            'image_url' => $imageUrl,
-                            'identifier' => $request->identifier,
-                            'created_at' => now(),
-                            'updated_at' => now()
-                        ];
-                    }
-
-                    MultipleImage::insert($contentImage);
+            $contentImage = [];
+            // Simpan multiple images jika ada
+            if (isset($validatedData['images'])) {
+                foreach ($validatedData['images'] as $imageUrl) {
+                    $contentImage = [
+                        'related_unique_id' => $story->unique_id,
+                        'related_type' => Story::class,
+                        'image_url' => $imageUrl,
+                        'identifier' => $request->identifier,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
                 }
-            });
+
+                MultipleImage::insert($contentImage);
+            }
+
+            DB::commit();
 
             return response()->json([
                 'code' => 201,
@@ -272,6 +274,7 @@ class StoryController extends Controller
                 'message' => 'Story berhasil ditambahkan',
             ], 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
             return response()->json([
                 'code' => 422,
                 'status' => 'error',
@@ -279,6 +282,7 @@ class StoryController extends Controller
                 'message' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
@@ -363,6 +367,7 @@ class StoryController extends Controller
                 ], 404);
             }
 
+            DB::beginTransaction();
             // Perbarui data story
             $story->update([
                 'title' => $validatedData['title'],
@@ -398,6 +403,7 @@ class StoryController extends Controller
 
                 MultipleImage::insert($currentMultipleImages);
             }
+            DB::commit();
 
             return response()->json([
                 'code' => 200,
@@ -406,6 +412,7 @@ class StoryController extends Controller
                 'message' => 'Story berhasil diperbarui.',
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
             return response()->json([
                 'code' => 422,
                 'status' => 'error',
@@ -413,7 +420,7 @@ class StoryController extends Controller
                 'message' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Error updating story: ' . $e->getMessage());
+            DB::rollBack();
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
