@@ -191,11 +191,13 @@ class UserController extends Controller
         }
     }
 
-    public function profileUser(string $unique_id)
+    public function profileUser()
     {
         try {
+            $auth = auth()->user();
+
             // Cari user berdasarkan unique_id
-            $user = User::where('unique_id', $unique_id)->first();
+            $user = User::where('unique_id', $auth->unique_id)->first();
 
             // Jika user tidak ditemukan, kembalikan error
             if (!$user) {

@@ -38,7 +38,7 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     Route::apiResource('categories', CategoryController::class)->except(['index']);
 
     // USER ====>
-    Route::get('/user/{unique_id}', [UserController::class, 'profileUser']);
+    Route::get('/profile', [UserController::class, 'profileUser']);
     Route::put('/update-profile/{unique_id}', [UserController::class, 'update']);
     Route::get('/user-stories', [StoryController::class, 'userStories']);
 
