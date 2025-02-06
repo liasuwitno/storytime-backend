@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\StoryCreateEvent;
 use App\Http\Requests\StoreStoryRequest;
 use App\Http\Requests\UpdateStoryRequest;
 use App\Models\Category;
 use App\Models\MultipleImage;
+use App\Models\Notification;
 use Illuminate\Support\Str;
 use App\Models\Story;
 use CaliCastle\Cuid;
@@ -232,6 +234,8 @@ class StoryController extends Controller
     {
         try {
             $validatedData = $request->validated();
+            // AMBIL INFORMASI MENGENAI PENGGUNA YANG LOING
+            $user = auth()->user();
 
             // Validasi input
             DB::beginTransaction();
@@ -265,6 +269,17 @@ class StoryController extends Controller
                 MultipleImage::insert($contentImage);
             }
 
+            // BUAT KUSTOM MESSAGE SUPAYA PESAN NOTIFIKASI NYA JADI MENARIK
+            $message = 'Yuhuuu 🥳 Ada story baru nich ' . $validatedData['title'] . '. Kuy cek 🏃‍➡️🏃‍➡️';
+
+            // SIMPAN NOTIFIKASI NYA DI DATABASE DULU
+            Notification::create([
+                'author_id' => $user->unique_id,
+                'message' => $message
+            ]);
+
+            // JIKA SUDAH DI TAMBAHKAN LALU KIRIM NOTIFIKASI KE USER
+            StoryCreateEvent::dispatch($message);
             DB::commit();
 
             return response()->json([

@@ -10,16 +10,18 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NewStoryAdded
+class StoryCreateEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public $message;
 
     /**
      * Create a new event instance.
      */
-    public function __construct()
+    public function __construct($message)
     {
-        //
+        $this->message = $message;
     }
 
     /**
@@ -27,10 +29,17 @@ class NewStoryAdded
      *
      * @return array<int, \Illuminate\Broadcasting\Channel>
      */
-    public function broadcastOn(): array
+    // BERTUGAS UNTUK MEMBUAT SEBUAH CHANNEL UNTUK NOTIFIKASI
+    public function broadcastOn()
     {
         return [
-            new PrivateChannel('channel-name'),
+            new Channel('storytime-channel')
         ];
+    }
+
+    // BERTUGAS UNTUK MEMBUAT NAMA EVENT YANG BISA DIPAKAI OLEH FRONTEND
+    public function broadcastAs()
+    {
+        return 'storytime-broadcast';
     }
 }
