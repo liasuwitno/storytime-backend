@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('unique_id')->unique();
             $table->string('title');
-            $table->text('slug');
+            $table->string('slug');
             $table->text('body');
             $table->boolean('is_deleted');
             $table->timestamps();
