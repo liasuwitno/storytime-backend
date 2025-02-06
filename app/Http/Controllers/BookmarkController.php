@@ -12,39 +12,17 @@ class BookmarkController extends Controller
      */
     public function index()
     {
-        try {
+        
+        $bookmarks = Bookmark::where('user_id', auth()->user()->unique_id)
+            ->with(['story' => function ($query) {
+                $query->where('is_deleted', false); // Hanya ambil story yang aktif
+            }])
+            ->get();
 
-            $user = auth()->user();
-
-            // Pastikan user diizinkan mengakses bookmark
-            $this->authorize('viewAny', Bookmark::class);
-
-            // Ambil semua bookmark milik user yang login
-            $bookmarks = Bookmark::where('user_id', $user->unique_id)->get();
-
-            if ($bookmarks->isEmpty()) {
-                return response()->json([
-                    'code' => 404,
-                    'status' => 'error',
-                    'data' => null,
-                    'message' => 'Belum ada bookmark / bookmark tidak ditemukan'
-                ], 404);
-            }
-
-            return response()->json([
-                'code' => 200,
-                'status' => 'success',
-                'data' => $bookmarks,
-                'message' => 'Bookmarks berhasil didapatkan',
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'code' => 500,
-                'status' => 'error',
-                'data' => null,
-                'message' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json([
+            'status' => 'success',
+            'data' => $bookmarks
+        ]);
     }
 
     /**
