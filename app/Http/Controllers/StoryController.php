@@ -234,7 +234,7 @@ class StoryController extends Controller
     {
         try {
             $validatedData = $request->validated();
-            // AMBIL INFORMASI MENGENAI PENGGUNA YANG LOING
+            // AMBIL INFORMASI MENGENAI PENGGUNA YANG LOGIN
             $user = auth()->user();
 
             // Validasi input
@@ -319,10 +319,9 @@ class StoryController extends Controller
     public function show(string $slug)
     {
         try {
-            // Cari story berdasarkan slug
-            $story = Story::with(['category', 'user', 'images'])
-            ->where('slug', $slug)
-            ->first();
+            $story = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images'])
+                ->where('slug', $slug)
+                ->first();
 
             if (!$story) {
                 return response()->json([
@@ -332,6 +331,42 @@ class StoryController extends Controller
                     'message' => 'Story tidak ditemukan.',
                 ], 404);
             }
+
+            // RESPONSE YANG DIHARAPKAN
+            // [
+            //     {
+            //         "story_id": 1,
+            //         "title": "Bergelud kita backend",
+            //         "slug": "bergelud-kita-backend",
+            //         "author": {
+            //             "name": "Kucing Hitam",
+            //             "avatar": "https://i.pinimg.com/736x/6c/a0/db/6ca0db73c407b5e02638dea2260dc952.jpg"
+            //         },
+            //         "content": "Kenapa frontend selalu dikucilkan. Eh tapi kamu tau gak sih gosip di INSTIKI? Dosen nya loh suka ...",
+            //         "images": [
+            //             {
+            //                 "url": "https://i.pinimg.com/736x/2b/04/01/2b0401bf88244fac037c2b1627b3118c.jpg",
+            //                 "identifier": "story"
+            //             }
+            //         ],
+            //         "created_at": "2025-02-07T14:16:53+08:00"
+            //     }
+            // ]
+
+
+            $relatedData = [
+                ...$story->toArray(),
+                // ADD NEW KEY
+                // 'category_name' => $story->category->name,
+                'images' => $story->images->map(function ($image) {
+                    return [
+                        'id' => $image->id,
+                        'url' => $image->image_url,
+                        'related_unique_id' => $image->related_unique_id,
+                        'identifier' => $image->identifier
+                    ];
+                }),
+            ];
 
             // Cari similar stories berdasarkan kategori, kecuali story saat ini
             $similarStories = Story::where('category_id', $story->category_id)
@@ -343,7 +378,7 @@ class StoryController extends Controller
                 'code' => 200,
                 'status' => 'success',
                 'data' => [
-                    'story' => $story,
+                    'story' => $relatedData,
                     'similar_stories' => $similarStories,
                 ],
                 'message' => 'Data Story berhasil diambil.',

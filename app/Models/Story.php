@@ -25,7 +25,7 @@ class Story extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id', 'unique_id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     public function images()

@@ -43,7 +43,6 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     Route::put('/update-profile/{unique_id}', [UserController::class, 'update']);
     Route::get('/user-stories', [StoryController::class, 'userStories']);
 
-
     Route::post('/logout', [UserController::class, 'logout']);
 
     // BOOKMARK ====>
