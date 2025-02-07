@@ -25,13 +25,14 @@ Route::get('/health', function () {
     ], 200);
 });
 
-Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']);
-
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'store'])->name('register');
 
 // CATEGORY PUBLIC ====>
 Route::get('/categories-all', [CategoryController::class, 'index']);
+
+Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']);
+Route::get('/story-detail/{slug}', [StoryController::class, 'show']);
 
 Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     // CATEGORY ====>
@@ -51,7 +52,6 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
 
     // STORY ====>
     Route::post('/create-story', [StoryController::class, 'store']);
-    Route::get('/story-detail/{slug}', [StoryController::class, 'show']);
     Route::put('/edit-story/{unique_id}', [StoryController::class, 'update']);
     Route::delete('/story-delete/{unique_id}', [StoryController::class, 'deleteStory']);
 

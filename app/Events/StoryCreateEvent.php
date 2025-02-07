@@ -14,14 +14,14 @@ class StoryCreateEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $message;
+    public $contents;
 
     /**
      * Create a new event instance.
      */
-    public function __construct($message)
+    public function __construct($contents)
     {
-        $this->message = $message;
+        $this->contents = $contents;
     }
 
     /**
@@ -33,13 +33,20 @@ class StoryCreateEvent implements ShouldBroadcast
     public function broadcastOn()
     {
         return [
-            new Channel('storytime-channel')
+            new Channel('storytime-ch')
         ];
     }
 
     // BERTUGAS UNTUK MEMBUAT NAMA EVENT YANG BISA DIPAKAI OLEH FRONTEND
     public function broadcastAs()
     {
-        return 'storytime-broadcast';
+        return 'storytime-bc';
+    }
+
+    public function broadcastWith()
+    {
+        return [
+            'contents' => $this->contents
+        ];
     }
 }

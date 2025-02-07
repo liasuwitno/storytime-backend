@@ -270,7 +270,7 @@ class StoryController extends Controller
             }
 
             // BUAT KUSTOM MESSAGE SUPAYA PESAN NOTIFIKASI NYA JADI MENARIK
-            $message = 'Yuhuuu 🥳 Ada story baru nich ' . $validatedData['title'] . '. Kuy cek 🏃‍➡️🏃‍➡️';
+            $message = 'Yuhuuu 🥳 Ada story baru nich "' . $validatedData['title'] . '". Kuy cek 🏃‍➡️🏃‍➡️';
 
             // SIMPAN NOTIFIKASI NYA DI DATABASE DULU
             Notification::create([
@@ -278,8 +278,13 @@ class StoryController extends Controller
                 'message' => $message
             ]);
 
+            $contents = [
+                'message' => $message,
+                'slug' => $slug
+            ];
+
             // JIKA SUDAH DI TAMBAHKAN LALU KIRIM NOTIFIKASI KE USER
-            StoryCreateEvent::dispatch($message);
+            StoryCreateEvent::dispatch($contents);
             DB::commit();
 
             return response()->json([
