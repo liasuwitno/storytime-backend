@@ -320,7 +320,9 @@ class StoryController extends Controller
     {
         try {
             // Cari story berdasarkan slug
-            $story = Story::where('slug', $slug)->first();
+            $story = Story::with(['category', 'user', 'images'])
+            ->where('slug', $slug)
+            ->first();
 
             if (!$story) {
                 return response()->json([

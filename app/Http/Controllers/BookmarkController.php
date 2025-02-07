@@ -12,7 +12,7 @@ class BookmarkController extends Controller
      */
     public function index()
     {
-        
+        // Ambil bookmark milik user yang sedang login dan sertakan data story-nya
         $bookmarks = Bookmark::where('user_id', auth()->user()->unique_id)
             ->with(['story' => function ($query) {
                 $query->where('is_deleted', false); // Hanya ambil story yang aktif
