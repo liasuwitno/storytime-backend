@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\StoryCreateEvent;
 use App\Http\Requests\StoreStoryRequest;
 use App\Http\Requests\UpdateStoryRequest;
+use App\Models\Bookmark;
 use App\Models\Category;
 use App\Models\MultipleImage;
 use App\Models\Notification;
@@ -100,35 +101,38 @@ class StoryController extends Controller
     public function userStories(Request $request)
     {
         try {
-            $user = auth()->user(); // Dapatkan user yang login
+            $user = auth()->user(); // Dapatkan user yang login (bisa null jika belum login)
 
-            // Query hanya untuk story milik user yang login
-            $stories = Story::where('user_id', $user->id)
-                ->where('is_deleted', false)
-                ->get();
+            // Query semua story yang tidak dihapus dengan relasi user, images, category
+            $stories = Story::with(['user', 'category', 'images'])->get();
 
-            // Cek apakah ada data story
-            if ($stories->isEmpty()) {
-                return response()->json([
-                    'code' => 404,
-                    'status' => 'error',
-                    'data' => null,
-                    'message' => 'Kamu belum punya story. Ayo buat story baru!',
-                ], 404);
-            }
+            $bookmarkedStoryIds = auth()->check()
+                ? Bookmark::where('user_id', auth()->user()->unique_id)->pluck('story_id')->toArray()
+                : [];
 
-            // Otorisasi policy untuk setiap story
-            foreach ($stories as $story) {
-                $this->authorize('userHasStories', $story);
-            }
+            $response = $stories->map(function ($story) use ($bookmarkedStoryIds) {
+                return [
+                    'story_id' => $story->id,
+                    'title' => $story->title,
+                    'slug' => $story->slug,
+                    'author' => [
+                        'name' => $story->user->fullname,
+                        'avatar' => $story->user->avatar ?? asset('default-avatar.jpg'),
+                    ],
+                    'content' => $story->body,
+                    'images' => $story->images->map(function ($image) {
+                        return [
+                            'url' => $image->image_url,
+                            'identifier' => 'story',
+                        ];
+                    }),
+                    'is_bookmark' => in_array($story->id, $bookmarkedStoryIds),
+                    'category_name' => $story->category->name ?? 'Uncategorized',
+                    'created_at' => $story->created_at->toIso8601String(),
+                ];
+            });
 
-            // Return hasil
-            return response()->json([
-                'code' => 200,
-                'status' => 'success',
-                'data' => $stories,
-                'message' => 'Story kamu berhasil didapatkan',
-            ], 200);
+            return response()->json($response);
         } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
@@ -138,6 +142,7 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
 
 
 
@@ -177,8 +182,8 @@ class StoryController extends Controller
                 return response()->json([
                     'code' => 404,
                     'status' => 'error',
-                    'data' => null,
-                    'message' => 'Belum ada story. Ayo buat story baru!',
+                    'data' => [],
+                    'message' => 'Belum ada story. Ayo buat story baru!'
                 ], 404);
             }
 
@@ -197,19 +202,16 @@ class StoryController extends Controller
                                 'avatar' => $story->author_avatar,
                             ],
                             'content' => $story->body,
-                            'images' => $story->images->map(function ($image) {
-                                return [
-                                    'url' => $image->image_url,
-                                    'identifier' => $image->identifier
-                                ];
-                            }),
+                            'images' => $story->images->map(fn($image) => [
+                                'url' => $image->image_url,
+                                'identifier' => $image->identifier
+                            ]),
                             'created_at' => $story->created_at->toIso8601String(),
                         ];
                     }),
                 ];
             });
 
-            // Kirim response dalam format JSON
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
@@ -217,15 +219,15 @@ class StoryController extends Controller
                 'message' => 'Berhasil mendapatkan data stories'
             ], 200);
         } catch (\Exception $e) {
-            // Tangani error jika ada
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
                 'data' => null,
-                'message' => $e->getMessage()
+                'message' => 'Terjadi kesalahan, coba lagi nanti.'
             ], 500);
         }
     }
+
 
     /**
      * Store a newly created resource in storage.
@@ -319,24 +321,22 @@ class StoryController extends Controller
     public function show(string $slug)
     {
         try {
-            // Cari story berdasarkan slug
             $story = Story::with(['category', 'user', 'images'])
-            ->where('slug', $slug)
-            ->first();
+                ->where('slug', $slug)
+                ->first();
 
             if (!$story) {
                 return response()->json([
                     'code' => 404,
                     'status' => 'error',
                     'data' => null,
-                    'message' => 'Story tidak ditemukan.',
+                    'message' => 'Story tidak ditemukan. Yuk buat story baru!'
                 ], 404);
             }
 
-            // Cari similar stories berdasarkan kategori, kecuali story saat ini
             $similarStories = Story::where('category_id', $story->category_id)
-                ->where('id', '!=', $story->id) // Hindari story itu sendiri
-                ->limit(5) // Batasi jumlah similar stories
+                ->where('id', '!=', $story->id)
+                ->limit(5)
                 ->get();
 
             return response()->json([
@@ -346,15 +346,14 @@ class StoryController extends Controller
                     'story' => $story,
                     'similar_stories' => $similarStories,
                 ],
-                'message' => 'Data Story berhasil diambil.',
+                'message' => 'Data Story berhasil diambil.'
             ], 200);
         } catch (\Exception $e) {
-
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
                 'data' => null,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan, coba lagi nanti.'
             ], 500);
         }
     }
@@ -374,10 +373,7 @@ class StoryController extends Controller
     public function update(UpdateStoryRequest $request, $unique_id)
     {
         try {
-            // Validasi input
             $validatedData = $request->validated();
-
-            // Cari story berdasarkan unique_id
             $story = Story::where('unique_id', $unique_id)->first();
 
             if (!$story) {
@@ -385,12 +381,11 @@ class StoryController extends Controller
                     'code' => 404,
                     'status' => 'error',
                     'data' => null,
-                    'message' => 'Story tidak ditemukan.',
+                    'message' => 'Story tidak ditemukan. Coba cek kembali!'
                 ], 404);
             }
 
             DB::beginTransaction();
-            // Perbarui data story
             $story->update([
                 'title' => $validatedData['title'],
                 'slug' => Str::slug($validatedData['title']),
@@ -398,7 +393,6 @@ class StoryController extends Controller
                 'category_id' => $validatedData['category_id'],
             ]);
 
-            // Perbarui multiple images jika ada
             if (isset($validatedData['images'])) {
                 $existingImages = MultipleImage::where('related_unique_id', $story->unique_id)
                     ->where('related_type', Story::class)
@@ -407,23 +401,19 @@ class StoryController extends Controller
 
                 $newImages = $validatedData['images'];
 
-                // Hapus gambar yang tidak ada di newImages
                 MultipleImage::where('related_unique_id', $story->unique_id)
                     ->where('related_type', Story::class)
                     ->whereNotIn('image_url', $newImages)
                     ->delete();
 
-                // Tambahkan gambar yang belum ada di existingImages
-                $currentMultipleImages = [];
-                foreach (array_diff($newImages, $existingImages) as $imageUrl) {
-                    $currentMultipleImages = [
-                        'related_unique_id' => $story->unique_id,
-                        'related_type' => Story::class,
-                        'image_url' => $imageUrl,
-                    ];
-                }
+                $insertImages = array_diff($newImages, $existingImages);
+                $multipleImages = array_map(fn($imageUrl) => [
+                    'related_unique_id' => $story->unique_id,
+                    'related_type' => Story::class,
+                    'image_url' => $imageUrl,
+                ], $insertImages);
 
-                MultipleImage::insert($currentMultipleImages);
+                MultipleImage::insert($multipleImages);
             }
             DB::commit();
 
@@ -431,7 +421,7 @@ class StoryController extends Controller
                 'code' => 200,
                 'status' => 'success',
                 'data' => $story,
-                'message' => 'Story berhasil diperbarui.',
+                'message' => 'Story berhasil diperbarui!'
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
@@ -439,7 +429,7 @@ class StoryController extends Controller
                 'code' => 422,
                 'status' => 'error',
                 'data' => null,
-                'message' => $e->errors(),
+                'message' => 'Validasi gagal. Silakan periksa kembali input Anda.'
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -447,10 +437,11 @@ class StoryController extends Controller
                 'code' => 500,
                 'status' => 'error',
                 'data' => null,
-                'message' => 'Terjadi kesalahan, coba lagi nanti.',
+                'message' => 'Terjadi kesalahan, coba lagi nanti.'
             ], 500);
         }
     }
+
 
     public function deleteStory(Request $request, $unique_id)
     {
