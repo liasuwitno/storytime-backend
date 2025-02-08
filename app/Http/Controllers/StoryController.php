@@ -334,43 +334,26 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            // RESPONSE YANG DIHARAPKAN
-            // [
-            //     {
-            //         "story_id": 1,
-            //         "title": "Bergelud kita backend",
-            //         "slug": "bergelud-kita-backend",
-            //         "author": {
-            //             "name": "Kucing Hitam",
-            //             "avatar": "https://i.pinimg.com/736x/6c/a0/db/6ca0db73c407b5e02638dea2260dc952.jpg"
-            //         },
-            //         "content": "Kenapa frontend selalu dikucilkan. Eh tapi kamu tau gak sih gosip di INSTIKI? Dosen nya loh suka ...",
-            //         "images": [
-            //             {
-            //                 "url": "https://i.pinimg.com/736x/2b/04/01/2b0401bf88244fac037c2b1627b3118c.jpg",
-            //                 "identifier": "story"
-            //             }
-            //         ],
-            //         "created_at": "2025-02-07T14:16:53+08:00"
-            //     }
-            // ]
-
+            $isBookmarked = Bookmark::where('story_id', $story->id)->exists();
 
             $relatedData = [
-                ...$story->toArray(),
-                // ADD NEW KEY
-                // 'category_name' => $story->category->name,
-                'images' => $story->images->map(function ($image) {
-                    return [
-                        'id' => $image->id,
-                        'url' => $image->image_url,
-                        'related_unique_id' => $image->related_unique_id,
-                        'identifier' => $image->identifier
-                    ];
-                }),
+                'story_id' => $story->id,
+                'title' => $story->title,
+                'slug' => $story->slug,
+                'author' => [
+                    'name' => $story->user->fullname,
+                    'avatar' => $story->user->avatar,
+                ],
+                'content' => $story->body,
+                'images' => $story->images->map(fn($image) => [
+                    'url' => $image->image_url,
+                    'identifier' => $image->identifier
+                ]),
+                'is_bookmark' => $isBookmarked,
+                'category_name' => $story->category->name,
+                'created_at' => $story->created_at->toIso8601String(),
             ];
 
-            // Cari similar stories berdasarkan kategori, kecuali story saat ini
             $similarStories = Story::where('category_id', $story->category_id)
                 ->where('id', '!=', $story->id)
                 ->limit(5)
@@ -394,6 +377,8 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
+
 
 
     /**

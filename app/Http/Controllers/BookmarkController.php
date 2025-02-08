@@ -12,18 +12,57 @@ class BookmarkController extends Controller
      */
     public function index()
     {
-        // Ambil bookmark milik user yang sedang login dan sertakan data story-nya
-        $bookmarks = Bookmark::where('user_id', auth()->user()->unique_id)
-            ->with(['story' => function ($query) {
-                $query->where('is_deleted', false); // Hanya ambil story yang aktif
-            }])
-            ->get();
+        try {
+            $bookmarks = Bookmark::where('user_id', auth()->user()->unique_id)
+                ->with(['story' => function ($query) {
+                    $query->where('is_deleted', false) // Hanya ambil story yang aktif
+                        ->with(['user:id,fullname,avatar', 'images', 'category:id,name']);
+                }])
+                ->paginate(10);
 
-        return response()->json([
-            'status' => 'success',
-            'data' => $bookmarks
-        ]);
+            $formattedBookmarks = $bookmarks->map(function ($bookmark) {
+                if (!$bookmark->story) return null;
+                return [
+                    'story_id' => $bookmark->story->id,
+                    'title' => $bookmark->story->title,
+                    'slug' => $bookmark->story->slug,
+                    'author' => [
+                        'name' => $bookmark->story->user->fullname,
+                        'avatar' => $bookmark->story->user->avatar,
+                    ],
+                    'content' => $bookmark->story->body,
+                    'images' => $bookmark->story->images->map(fn($image) => [
+                        'url' => $image->image_url,
+                        'identifier' => $image->identifier
+                    ]),
+                    'is_bookmark' => true,
+                    'category_name' => $bookmark->story->category->name,
+                    'created_at' => $bookmark->story->created_at->toIso8601String(),
+                ];
+            })->filter();
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'data' => $formattedBookmarks,
+                'pagination' => [
+                    'total' => $bookmarks->total(),
+                    'per_page' => $bookmarks->perPage(),
+                    'current_page' => $bookmarks->currentPage(),
+                    'last_page' => $bookmarks->lastPage(),
+                ],
+                'message' => 'Berhasil mendapatkan daftar bookmark'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'data' => null,
+                'message' => 'Terjadi kesalahan, coba lagi nanti.'
+            ], 500);
+        }
     }
+
 
     /**
      * Show the form for creating a new resource.
