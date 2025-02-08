@@ -31,8 +31,11 @@ Route::post('/register', [UserController::class, 'store'])->name('register');
 // CATEGORY PUBLIC ====>
 Route::get('/categories-all', [CategoryController::class, 'index']);
 
+//STORY PUBLIC
 Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']);
 Route::get('/story-detail/{slug}', [StoryController::class, 'show']);
+Route::get('/spesific-stories/{category}', [StoryController::class, 'spesificStories']);
+
 
 Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     // CATEGORY ====>

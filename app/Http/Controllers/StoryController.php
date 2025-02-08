@@ -22,69 +22,51 @@ class StoryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
         try {
-            // Ambil parameter sort, default adalah 'newest'
-            $sort = $request->query('sort', 'newest');
-
-            // Ambil parameter search (untuk pencarian berdasarkan title)
-            $search = $request->query('search', null);
-
-            // Ambil parameter page dan tentukan jumlah item per halaman
-            $perPage = 10; // Default jumlah per halaman
-            $page = $request->query('page', 1);
-
-            // Query dasar
-            $query = Story::where('is_deleted', false)
-                ->join('users', 'stories.user_id', '=', 'users.id')
-                ->join('categories', 'stories.category_id', '=', 'categories.id')
-                ->select('stories.*', 'users.name as user_name', 'categories.name as category_name');
-
-            // Tambahkan filter untuk pencarian (jika ada)
-            if ($search) {
-                $query->where('stories.title', 'like', '%' . $search . '%');
-            }
-
-            // Sorting berdasarkan parameter sort
-            switch ($sort) {
-                case 'popular': // Berdasarkan banyaknya bookmark
-                    $query->leftJoin('bookmarks', 'stories.id', '=', 'bookmarks.story_id')
-                        ->selectRaw('COUNT(bookmarks.id) as bookmark_count')
-                        ->groupBy('stories.id', 'users.name', 'categories.name', 'stories.created_at')
-                        ->orderBy('bookmark_count', 'desc');
-                    break;
-
-                case 'asc': // Berdasarkan title (A-Z)
-                    $query->orderBy('stories.title', 'asc');
-                    break;
-
-                case 'desc': // Berdasarkan title (Z-A)
-                    $query->orderBy('stories.title', 'desc');
-                    break;
-
-                case 'newest': // Default: Berdasarkan waktu terbaru
-                default:
-                    $query->orderBy('stories.created_at', 'desc');
-                    break;
-            }
-
-            // Dapatkan hasil dengan pagination
-            $stories = $query->paginate($perPage, ['*'], 'page', $page);
+            $stories = Story::where('is_deleted', false)
+                ->with(['user:id,fullname,avatar', 'images', 'category:id,name'])
+                ->paginate(10);
 
             if ($stories->isEmpty()) {
                 return response()->json([
                     'code' => 404,
                     'status' => 'error',
                     'data' => null,
-                    'message' => 'Belum ada story. Ayo buat story baru!',
+                    'message' => 'Stories tidak ditemukan',
                 ], 404);
             }
+
+            $formattedStories = $stories->map(function ($story) {
+                return [
+                    'story_id' => $story->id,
+                    'title' => $story->title,
+                    'slug' => $story->slug,
+                    'author' => [
+                        'name' => $story->user->fullname,
+                        'avatar' => $story->user->avatar,
+                    ],
+                    'content' => $story->body,
+                    'images' => $story->images->map(fn($image) => [
+                        'url' => $image->image_url,
+                        'identifier' => $image->identifier
+                    ]),
+                    'category_name' => $story->category->name,
+                    'created_at' => $story->created_at->toIso8601String(),
+                ];
+            });
 
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
-                'data' => $stories,
+                'data' => $formattedStories,
+                'pagination' => [
+                    'total' => $stories->total(),
+                    'per_page' => $stories->perPage(),
+                    'current_page' => $stories->currentPage(),
+                    'last_page' => $stories->lastPage(),
+                ],
                 'message' => 'Stories berhasil didapatkan',
             ], 200);
         } catch (\Exception $e) {
@@ -92,10 +74,11 @@ class StoryController extends Controller
                 'code' => 500,
                 'status' => 'error',
                 'data' => null,
-                'message' => $e->getMessage(),
+                'message' => 'Terjadi kesalahan, coba lagi nanti.'
             ], 500);
         }
     }
+
 
 
     public function userStories(Request $request)
@@ -132,7 +115,12 @@ class StoryController extends Controller
                 ];
             });
 
-            return response()->json($response);
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'data' => $response,
+                'message' => 'Berhasil mendapatkan daftar stories user',
+            ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
@@ -142,6 +130,92 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
+
+    public function spesificStories(Request $request, $category)
+    {
+        try {
+            $sortBy = $request->query('sort', 'newest'); // Default newest
+            $perPage = $request->query('per_page', 10); // Default 10 per halaman
+            $search = $request->query('search');
+
+            $stories = Story::where('is_deleted', false)
+                ->with(['user:id,fullname,avatar', 'images', 'category:id,name'])
+                ->when($category !== 'all-story', function ($query) use ($category) {
+                    $query->whereHas('category', function ($q) use ($category) {
+                        $q->where('name', $category);
+                    });
+                })
+                ->when($search, function ($query) use ($search) {
+                    $query->where('title', 'like', "%$search%");
+                })
+                ->when($sortBy === 'ascending', function ($query) {
+                    $query->orderBy('title', 'asc');
+                })
+                ->when($sortBy === 'descending', function ($query) {
+                    $query->orderBy('title', 'desc');
+                })
+                ->when($sortBy === 'newest', function ($query) {
+                    $query->orderBy('created_at', 'desc');
+                })
+                ->when($sortBy === 'popular', function ($query) {
+                    $query->withCount('bookmarks')->orderBy('bookmarks_count', 'desc');
+                })
+                ->paginate($perPage);
+
+            if ($stories->isEmpty()) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => [],
+                    'message' => 'Belum ada story. Ayo buat story baru!'
+                ], 404);
+            }
+
+            $formattedStories = $stories->map(function ($story) {
+                
+            $currentUser = auth()->user() ?? null;
+
+                return [
+                    'story_id' => $story->id,
+                    'title' => $story->title,
+                    'slug' => $story->slug,
+                    'author' => [
+                        'name' => $story->user->fullname,
+                        'avatar' => $story->user->avatar,
+                    ],
+                    'content' => $story->body,
+                    'images' => $story->images->map(fn($image) => [
+                        'url' => $image->image_url,
+                        'identifier' => $image->identifier
+                    ]),
+                    'category_name' => $story->category->name,
+                    'is_bookmark' => $currentUser ? Bookmark::where('story_id', $story->id)->where('user_id', auth()->user()->unique_id)->exists():false,
+                ];
+            });
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'data' => $formattedStories,
+                'pagination' => [
+                    'total' => $stories->total(),
+                    'per_page' => $stories->perPage(),
+                    'current_page' => $stories->currentPage(),
+                    'last_page' => $stories->lastPage(),
+                ],
+                'message' => 'Berhasil mendapatkan daftar stories berdasarkan sorting'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'data' => null,
+                'message' => $e->getMessage(), // Biar kita tahu error-nya apa
+            ], 500);
+        }
+    }
+
 
 
 
