@@ -173,8 +173,8 @@ class StoryController extends Controller
             }
 
             $formattedStories = $stories->map(function ($story) {
-                
-            $currentUser = auth()->user() ?? null;
+
+                $currentUser = auth()->user() ?? null;
 
                 return [
                     'story_id' => $story->id,
@@ -190,7 +190,7 @@ class StoryController extends Controller
                         'identifier' => $image->identifier
                     ]),
                     'category_name' => $story->category->name,
-                    'is_bookmark' => $currentUser ? Bookmark::where('story_id', $story->id)->where('user_id', auth()->user()->unique_id)->exists():false,
+                    'is_bookmark' => $currentUser ? Bookmark::where('story_id', $story->id)->where('user_id', auth()->user()->unique_id)->exists() : false,
                 ];
             });
 
@@ -215,10 +215,6 @@ class StoryController extends Controller
             ], 500);
         }
     }
-
-
-
-
 
     /**
      * Show the form for creating a new resource.
@@ -360,7 +356,7 @@ class StoryController extends Controller
             ];
 
             // JIKA SUDAH DI TAMBAHKAN LALU KIRIM NOTIFIKASI KE USER
-            StoryCreateEvent::dispatch($contents);
+            // StoryCreateEvent::dispatch($contents);
             DB::commit();
 
             return response()->json([
@@ -388,6 +384,29 @@ class StoryController extends Controller
         }
     }
 
+    // SEBUAH METHOD UNTUK MERUBAH DATA STORY MENJADI BENTUK YANG DIINGINKAN UNTUK MENGHINDARI DUPLIKASI DATA
+    private function transformStoryData($story)
+    {
+        $isBookmarked = Bookmark::where('story_id', $story->id)->exists() ?? false;
+
+        return [
+            'story_id' => $story->id,
+            'title' => $story->title,
+            'slug' => $story->slug,
+            'author' => [
+                'name' => $story->user->fullname,
+                'avatar' => $story->user->avatar,
+            ],
+            'content' => $story->body,
+            'images' => $story->images->map(fn($image) => [
+                'url' => $image->image_url,
+                'identifier' => $image->identifier
+            ]),
+            'is_bookmark' => $isBookmarked,
+            'category_name' => $story->category->name,
+            'created_at' => $story->created_at->toIso8601String(),
+        ];
+    }
 
     /**
      * Display the specified resource.
@@ -396,8 +415,7 @@ class StoryController extends Controller
     {
         try {
             $story = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images'])
-                ->where('slug', $slug)
-                ->first();
+                ->where('slug', $slug)->first();
 
             if (!$story) {
                 return response()->json([
@@ -408,27 +426,8 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $isBookmarked = Bookmark::where('story_id', $story->id)->exists();
-
-            $relatedData = [
-                'story_id' => $story->id,
-                'title' => $story->title,
-                'slug' => $story->slug,
-                'author' => [
-                    'name' => $story->user->fullname,
-                    'avatar' => $story->user->avatar,
-                ],
-                'content' => $story->body,
-                'images' => $story->images->map(fn($image) => [
-                    'url' => $image->image_url,
-                    'identifier' => $image->identifier
-                ]),
-                'is_bookmark' => $isBookmarked,
-                'category_name' => $story->category->name,
-                'created_at' => $story->created_at->toIso8601String(),
-            ];
-
-            $similarStories = Story::where('category_id', $story->category_id)
+            $similarStories = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images'])
+                ->where('category_id', $story->category_id)
                 ->where('id', '!=', $story->id)
                 ->limit(5)
                 ->get();
@@ -437,8 +436,8 @@ class StoryController extends Controller
                 'code' => 200,
                 'status' => 'success',
                 'data' => [
-                    'story' => $relatedData,
-                    'similar_stories' => $similarStories,
+                    'story' => $this->transformStoryData($story),
+                    'similar_stories' => $similarStories->map(fn($story) => $this->transformStoryData($story)),
                 ],
                 'message' => 'Data Story berhasil diambil.'
             ], 200);
@@ -451,8 +450,6 @@ class StoryController extends Controller
             ], 500);
         }
     }
-
-
 
 
     /**
