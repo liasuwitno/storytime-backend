@@ -79,19 +79,27 @@ class StoryController extends Controller
         }
     }
 
-
-
     public function userStories(Request $request)
     {
         try {
-            $user = auth()->user(); // Dapatkan user yang login (bisa null jika belum login)
+            $page = $request->query('page', 1);
+            $perPage = $request->query('per_page', 5);
 
-            // Query semua story yang tidak dihapus dengan relasi user, images, category
-            $stories = Story::with(['user', 'category', 'images'])->get();
+            $stories = Story::with(['user:id,fullname,avatar', 'category:id,name', 'images'])
+                ->paginate($perPage, ['*'], 'page', $page);
 
             $bookmarkedStoryIds = auth()->check()
                 ? Bookmark::where('user_id', auth()->user()->unique_id)->pluck('story_id')->toArray()
                 : [];
+
+            if ($stories->isEmpty()) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'Stories tidak ditemukan',
+                ], 404);
+            }
 
             $response = $stories->map(function ($story) use ($bookmarkedStoryIds) {
                 return [
@@ -118,7 +126,16 @@ class StoryController extends Controller
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
-                'data' => $response,
+                'data' => [
+                    'stories' => $response,
+                    'pagination' => [
+                        'current_page' => $stories->currentPage(),
+                        'total_pages' => $stories->lastPage(),
+                        'per_page' => $stories->perPage(),
+                        'total_data' => $stories->total(),
+                        'has_more_pages' => $stories->hasMorePages(),
+                    ],
+                ],
                 'message' => 'Berhasil mendapatkan daftar stories user',
             ], 200);
         } catch (\Exception $e) {
@@ -228,7 +245,6 @@ class StoryController extends Controller
     public function getStoriesByCategory()
     {
         try {
-            // Ambil data kategori dengan maksimal 3 stories per kategori
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
                     $query->with('images')  // Eager load images using polymorphic relationship
@@ -403,6 +419,7 @@ class StoryController extends Controller
                 'identifier' => $image->identifier
             ]),
             'is_bookmark' => $isBookmarked,
+            'category_id' => $story->category_id,
             'category_name' => $story->category->name,
             'created_at' => $story->created_at->toIso8601String(),
         ];

@@ -10,18 +10,33 @@ class BookmarkController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $bookmarks = Bookmark::where('user_id', auth()->user()->unique_id)
+            $page = $request->query('page', 1);
+            $perPage = $request->query('per_page', 5);
+
+            $user = auth()->user();
+
+            $bookmarks = Bookmark::where('user_id', $user->unique_id)
                 ->with(['story' => function ($query) {
-                    $query->where('is_deleted', false) // Hanya ambil story yang aktif
+                    $query->where('is_deleted', false)
                         ->with(['user:id,fullname,avatar', 'images', 'category:id,name']);
                 }])
-                ->paginate(10);
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            if ($bookmarks->isEmpty()) {
+                return response()->json([
+                    'code' => 404,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'Bookmark tidak ditemukan'
+                ], 404);
+            }
 
             $formattedBookmarks = $bookmarks->map(function ($bookmark) {
                 if (!$bookmark->story) return null;
+
                 return [
                     'story_id' => $bookmark->story->id,
                     'title' => $bookmark->story->title,
@@ -44,12 +59,15 @@ class BookmarkController extends Controller
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
-                'data' => $formattedBookmarks,
-                'pagination' => [
-                    'total' => $bookmarks->total(),
-                    'per_page' => $bookmarks->perPage(),
-                    'current_page' => $bookmarks->currentPage(),
-                    'last_page' => $bookmarks->lastPage(),
+                'data' => [
+                    'bookmarks' => $formattedBookmarks,
+                    'pagination' => [
+                        'current_page' => $bookmarks->currentPage(),
+                        'total_pages' => $bookmarks->lastPage(),
+                        'per_page' => $bookmarks->perPage(),
+                        'total_data' => $bookmarks->total(),
+                        'has_more_pages' => $bookmarks->hasMorePages(),
+                    ],
                 ],
                 'message' => 'Berhasil mendapatkan daftar bookmark'
             ], 200);

@@ -14,7 +14,6 @@ class Category extends Model
     public function stories()
     {
         return $this->hasMany(Story::class)
-            ->orderBy('created_at', 'desc')
-            ->take(3);
+            ->orderBy('created_at', 'desc');
     }
 }

@@ -20,14 +20,18 @@ class UserSeeder extends Seeder
                 'username' => 'mokurolia',
                 'email' => 'mokurolia@me.com',
                 'fullname' => 'Lia Sigma Papale',
-                'password' => bcrypt('mokurolia')
+                'password' => bcrypt('mokurolia'),
+                'created_at' => now(),
+                'updated_at' => now()
             ],
             [
                 'unique_id' => Cuid::make(),
                 'username' => 'kuroneko',
                 'email' => 'kuroneko@me.com',
                 'fullname' => 'Kucing Hitam',
-                'password' => bcrypt('kuroneko')
+                'password' => bcrypt('kuroneko'),
+                'created_at' => now(),
+                'updated_at' => now()
             ],
         ];
 
