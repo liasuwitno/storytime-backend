@@ -217,10 +217,11 @@ class StoryController extends Controller
                 'data' => [
                     'stories' => $formattedStories,
                     'pagination' => [
-                        'total' => $stories->total(),
-                        'per_page' => $stories->perPage(),
                         'current_page' => $stories->currentPage(),
-                        'last_page' => $stories->lastPage(),
+                        'total_pages' => $stories->lastPage(),
+                        'per_page' => $stories->perPage(),
+                        'total_data' => $stories->total(),
+                        'has_more_pages' => $stories->hasMorePages(),
                     ],
                 ],
                 'message' => 'Berhasil mendapatkan daftar stories berdasarkan sorting'
