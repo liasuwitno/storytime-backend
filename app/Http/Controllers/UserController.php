@@ -36,6 +36,7 @@ class UserController extends Controller
             }
 
             $user = User::where('email', $credentials['email'])->orWhere('username', $credentials['email'])->first();
+
             if (!$user) {
                 return response()->json([
                     'code' => 404,
@@ -44,6 +45,7 @@ class UserController extends Controller
                     'message' => 'User tidak ditemukan, silakan Registrasi terlebih dahulu'
                 ], 404);
             }
+
             $user->tokens()->delete();
 
             $hours = (int) 4;
@@ -54,7 +56,7 @@ class UserController extends Controller
                 'code' => 200,
                 'message' => 'Login successful. Welcome back!',
                 'data' => [
-                    'id' => $user->unique_id,
+                    'id' => $user->id,
                     'token' => $generateToken->plainTextToken,
                     'session' => [
                         'expires_at' => now()->addHours($hours),
@@ -73,7 +75,7 @@ class UserController extends Controller
             return response()->json([
                 'status' => 'error',
                 'code' => 500,
-                'message' => 'Something went wrong, please try again later',
+                'message' => $e->getMessage(),
                 'data' => null
             ], 500);
         }
@@ -95,14 +97,14 @@ class UserController extends Controller
                     'password.required' => 'Password wajib diisi.',
                 ]
             );
+
             User::create([
-                'unique_id' => Cuid::make(),
+                'id' => Cuid::make(),
                 'fullname' => $request->fullname,
                 'slug' => str()->slug($request->fullname),
                 'username' => strtolower($request->username),
                 'email' => strtolower($request->email),
                 'password' => Hash::make($request->password),
-
             ]);
 
             return response()->json([
@@ -124,6 +126,7 @@ class UserController extends Controller
     {
         try {
             $request->user()->currentAccessToken()->delete();
+
             return response()->json([
                 'status' => 'success',
                 'code' => 200,
@@ -140,7 +143,7 @@ class UserController extends Controller
         }
     }
 
-    public function update(Request $request, string $unique_id)
+    public function update(Request $request, string $id)
     {
         try {
             $request->validate(
@@ -157,7 +160,7 @@ class UserController extends Controller
                     'new_password.required' => 'Masukkan password baru anda'
                 ]
             );
-            $user = User::where('unique_id', $unique_id)->firstOrFail();
+            $user = User::where('id', $id)->firstOrFail();
 
             if (!Hash::check($request->old_password, $user->password)) {
                 return response()->json([
@@ -197,7 +200,7 @@ class UserController extends Controller
             $auth = auth()->user();
 
             // Cari user berdasarkan unique_id
-            $user = User::where('unique_id', $auth->unique_id)->first();
+            $user = User::where('id', $auth->id)->first();
 
             // Jika user tidak ditemukan, kembalikan error
             if (!$user) {

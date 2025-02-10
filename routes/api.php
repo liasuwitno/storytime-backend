@@ -43,7 +43,7 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
 
     // USER ====>
     Route::get('/profile', [UserController::class, 'profileUser']);
-    Route::put('/update-profile/{unique_id}', [UserController::class, 'update']);
+    Route::put('/update-profile/{id}', [UserController::class, 'update']);
     Route::get('/user-stories', [StoryController::class, 'userStories']);
 
     Route::post('/logout', [UserController::class, 'logout']);
@@ -54,8 +54,8 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
 
     // STORY ====>
     Route::post('/create-story', [StoryController::class, 'store']);
-    Route::put('/edit-story/{unique_id}', [StoryController::class, 'update']);
-    Route::delete('/story-delete/{unique_id}', [StoryController::class, 'deleteStory']);
+    Route::put('/edit-story/{id}', [StoryController::class, 'update']);
+    Route::delete('/story-delete/{id}', [StoryController::class, 'deleteStory']);
 
     // UPLOAD FILE GENERAL ====>
     Route::post('/upload-file/{folder}', [UploadFileController::class, 'uploadFile']);
