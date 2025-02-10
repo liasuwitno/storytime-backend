@@ -101,7 +101,7 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $response = $stories->map(function ($story) use ($bookmarkedStoryIds) {
+            $response = collect($stories->items())->map(function ($story) use ($bookmarkedStoryIds) {
                 return [
                     'story_id' => $story->id,
                     'title' => $story->title,
@@ -214,12 +214,14 @@ class StoryController extends Controller
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
-                'data' => $formattedStories,
-                'pagination' => [
-                    'total' => $stories->total(),
-                    'per_page' => $stories->perPage(),
-                    'current_page' => $stories->currentPage(),
-                    'last_page' => $stories->lastPage(),
+                'data' => [
+                    'stories' => $formattedStories,
+                    'pagination' => [
+                        'total' => $stories->total(),
+                        'per_page' => $stories->perPage(),
+                        'current_page' => $stories->currentPage(),
+                        'last_page' => $stories->lastPage(),
+                    ],
                 ],
                 'message' => 'Berhasil mendapatkan daftar stories berdasarkan sorting'
             ], 200);
