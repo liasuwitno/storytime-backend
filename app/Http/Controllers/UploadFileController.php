@@ -59,14 +59,14 @@ class UploadFileController extends Controller
 
             // Response berhasil
             return response()->json([
-                'code' => 200,
+                'code' => 201,
                 'status' => 'success',
                 'data' => [
                     'urls' => $uploadedFiles, // Semua URL file
                     'identifier' => $request->identifier,
                 ],
                 'message' => 'Semua file berhasil diupload'
-            ], 200);
+            ], 201);
         } catch (ValidationException $e) {
             // Validasi gagal
             return response()->json([
@@ -77,6 +77,61 @@ class UploadFileController extends Controller
             ], 422);
         } catch (\Exception $e) {
             // Error lainnya
+            return response()->json([
+                'code' => 500,
+                'status' => 'error',
+                'data' => null,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function uploadFileSingle(Request $request, string $folder)
+    {
+        try {
+            $request->validate([
+                'file' => [
+                    'required',
+                    'file',
+                    'max:1024',
+                    'mimes:jpg,jpeg,png,webp',
+                ],
+                'identifier' => 'required|string|max:80',
+            ]);
+
+            $file = $request->file('file');
+
+            if (!$file->isValid()) {
+                return response()->json([
+                    'code' => 422,
+                    'status' => 'error',
+                    'data' => null,
+                    'message' => 'File tidak valid'
+                ], 422);
+            }
+
+            $fileName = Cuid::make();
+            $resultFile = $file->storeAs($request->folder, "{$fileName}.{$file->extension()}");
+
+            $baseUrl = Storage::url($resultFile);
+
+            return response()->json([
+                'code' => 200,
+                'status' => 'success',
+                'data' => [
+                    'urls' => $baseUrl,
+                    'identifier' => $request->identifier
+                ],
+                'message' => 'File berhasil di upload'
+            ], 200);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'code' => 422,
+                'status' => 'error',
+                'data' => null,
+                'message' => $e->getMessage()
+            ], 422);
+        } catch (\Exception $e) {
             return response()->json([
                 'code' => 500,
                 'status' => 'error',

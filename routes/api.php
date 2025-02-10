@@ -59,4 +59,5 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
 
     // UPLOAD FILE GENERAL ====>
     Route::post('/upload-file/{folder}', [UploadFileController::class, 'uploadFile']);
+    Route::post('/upload-file-single/{folder}', [UploadFileController::class, 'uploadFileSingle']);
 });

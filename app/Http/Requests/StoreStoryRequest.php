@@ -17,8 +17,8 @@ class StoreStoryRequest extends FormRequest
             'title' => 'required|string|max:255',
             'body' => 'required|string',
             'identifier' => 'required|string',
-            'images' => 'nullable|array',
-            'images.*' => 'nullable|url:http,https',
+            'images' => 'required|array',
+            'images.*' => 'required|url:http,https|min:1',
             'category_id' => 'required|exists:categories,id',
         ];
     }
@@ -34,4 +34,3 @@ class StoreStoryRequest extends FormRequest
         ];
     }
 }
-
