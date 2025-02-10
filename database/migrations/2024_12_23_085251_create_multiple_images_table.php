@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('multiple_images', function (Blueprint $table) {
             $table->id();
-            $table->string('related_unique_id');
+            $table->string('related_id');
             $table->string('related_type');           
             $table->text('image_url');
             $table->string('identifier')->nullable();           
             $table->timestamps();
 
-            $table->index(['related_unique_id', 'related_type']);
+            $table->index(['related_id', 'related_type']);
         });
     }
 

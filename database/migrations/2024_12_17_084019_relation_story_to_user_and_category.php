@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('stories', function (Blueprint $table) {
-            $table->foreignId('user_id')->after('is_deleted')->references('id')->on('users');
+            $table->foreignUuid('user_id')->after('is_deleted')->references('id')->on('users');
             $table->foreignId('category_id')->after('user_id')->references('id')->on('categories');
         });
     }

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignUuid('author_id')->references('unique_id')->on('users');
+            $table->foreignUuid('author_id')->references('id')->on('users');
             $table->text('message');
             $table->timestamps();
         });

@@ -2,14 +2,22 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Story extends Model
 {
-    use HasFactory;
+    use HasFactory, HasUuids;
+
+    protected $table = 'stories';
+
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
     protected $fillable = [
-        'unique_id',
         'title',
         'user_id',
         'category_id',
@@ -30,6 +38,6 @@ class Story extends Model
 
     public function images()
     {
-        return $this->morphMany(MultipleImage::class, 'related', 'related_type', 'related_unique_id', 'unique_id');
+        return $this->morphMany(MultipleImage::class, 'related', 'related_type', 'related_id');
     }
 }

@@ -98,7 +98,7 @@ class BookmarkController extends Controller
         try {
             // Validasi untuk user_id berdasarkan unique_id
             $validatedData = $request->validate([
-                'user_id' => 'required|exists:users,unique_id',  // Pastikan menggunakan unique_id, bukan id
+                'user_id' => 'required|exists:users,id',  
                 'story_id' => 'required|exists:stories,id',
             ]);
 
@@ -110,12 +110,12 @@ class BookmarkController extends Controller
 
             // Cek apakah bookmark sudah ada
             $bookmark = Bookmark::where([
-                'user_id' => $user->unique_id,
+                'user_id' => $user->id,
                 'story_id' => $validatedData['story_id'],
             ])->first();
 
             // Cek apakah user_id yang dikirimkan sesuai dengan unique_id pengguna yang sedang login
-            if ($user->unique_id !== $validatedData['user_id']) {
+            if ($user->id !== $validatedData['user_id']) {
                 return response()->json([
                     'code' => 403,
                     'status' => 'error',
@@ -125,7 +125,7 @@ class BookmarkController extends Controller
 
             // Cek apakah bookmark sudah ada
             $bookmark = Bookmark::where([
-                'user_id' => $user->unique_id,  // Gunakan unique_id di sini
+                'user_id' => $user->id,  // Gunakan unique_id di sini
                 'story_id' => $validatedData['story_id'],
             ])->first();
 
@@ -140,14 +140,14 @@ class BookmarkController extends Controller
             } else {
                 // Jika belum ada, tambahkan
                 Bookmark::create([
-                    'user_id' => $user->unique_id,  // Pastikan menggunakan unique_id
+                    'user_id' => $user->id,  // Pastikan menggunakan unique_id
                     'story_id' => $validatedData['story_id'],
                 ]);
                 return response()->json([
-                    'code' => 200,
+                    'code' => 201,
                     'status' => 'success',
                     'message' => 'Bookmark berhasil ditambahkan.',
-                ], 200);
+                ], 201);
             }
         } catch (\Exception $e) {
             return response()->json([

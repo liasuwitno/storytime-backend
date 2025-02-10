@@ -207,7 +207,7 @@ class StoryController extends Controller
                         'identifier' => $image->identifier
                     ]),
                     'category_name' => $story->category->name,
-                    'is_bookmark' => $currentUser ? Bookmark::where('story_id', $story->id)->where('user_id', auth()->user()->unique_id)->exists() : false,
+                    'is_bookmark' => $currentUser ? Bookmark::where('story_id', $story->id)->where('user_id', auth()->user()->id)->exists() : false,
                 ];
             });
 
@@ -254,7 +254,6 @@ class StoryController extends Controller
                         ->join('users', 'stories.user_id', '=', 'users.id')
                         ->select(
                             'stories.id as story_id',
-                            'stories.unique_id',
                             'stories.title',
                             'stories.slug',
                             'stories.body',
@@ -334,7 +333,6 @@ class StoryController extends Controller
 
             // Simpan story ke database
             $story = Story::create([
-                'unique_id' => Cuid::make(),
                 'title' => $validatedData['title'],
                 'slug' => $slug,
                 'body' => $validatedData['body'],
@@ -348,7 +346,7 @@ class StoryController extends Controller
             if (isset($validatedData['images'])) {
                 foreach ($validatedData['images'] as $imageUrl) {
                     $contentImage = [
-                        'related_unique_id' => $story->unique_id,
+                        'related_id' => $story->id,
                         'related_type' => Story::class,
                         'image_url' => $imageUrl,
                         'identifier' => $request->identifier,
@@ -365,7 +363,7 @@ class StoryController extends Controller
 
             // SIMPAN NOTIFIKASI NYA DI DATABASE DULU
             Notification::create([
-                'author_id' => $user->unique_id,
+                'author_id' => $user->id,
                 'message' => $message
             ]);
 
@@ -483,11 +481,11 @@ class StoryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateStoryRequest $request, $unique_id)
+    public function update(UpdateStoryRequest $request, $id)
     {
         try {
             $validatedData = $request->validated();
-            $story = Story::where('unique_id', $unique_id)->first();
+            $story = Story::where('id', $id)->first();
 
             if (!$story) {
                 return response()->json([
@@ -507,21 +505,21 @@ class StoryController extends Controller
             ]);
 
             if (isset($validatedData['images'])) {
-                $existingImages = MultipleImage::where('related_unique_id', $story->unique_id)
+                $existingImages = MultipleImage::where('related_id', $story->id)
                     ->where('related_type', Story::class)
                     ->pluck('image_url')
                     ->toArray();
 
                 $newImages = $validatedData['images'];
 
-                MultipleImage::where('related_unique_id', $story->unique_id)
+                MultipleImage::where('related_id', $story->id)
                     ->where('related_type', Story::class)
                     ->whereNotIn('image_url', $newImages)
                     ->delete();
 
                 $insertImages = array_diff($newImages, $existingImages);
                 $multipleImages = array_map(fn($imageUrl) => [
-                    'related_unique_id' => $story->unique_id,
+                    'related_id' => $story->id,
                     'related_type' => Story::class,
                     'image_url' => $imageUrl,
                 ], $insertImages);
@@ -556,11 +554,11 @@ class StoryController extends Controller
     }
 
 
-    public function deleteStory(Request $request, $unique_id)
+    public function deleteStory(Request $request, $id)
     {
         try {
             // Cari story berdasarkan unique_id dan user_id yang sedang login
-            $story = Story::where('unique_id', $unique_id)
+            $story = Story::where('id', $id)
                 ->where('user_id', $request->user()->id) // Validasi kepemilikan
                 ->where('is_deleted', 0) // Pastikan story belum dihapus
                 ->first();
@@ -569,10 +567,7 @@ class StoryController extends Controller
                 return response()->json([
                     'code' => 404,
                     'status' => 'error',
-                    'data' => [
-                        'kk' => $unique_id,
-                        'hh' => $request->user()->unique_id
-                    ],
+                    'data' => null,
                     'message' => 'Story tidak ditemukan atau Anda tidak memiliki izin untuk menghapusnya.',
                 ], 404);
             }

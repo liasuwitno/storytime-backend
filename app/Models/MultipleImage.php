@@ -9,7 +9,7 @@ class MultipleImage extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'related_unique_id',
+        'related_id',
         'related_type',
         'image_url',
         'identifier'
@@ -17,6 +17,6 @@ class MultipleImage extends Model
 
     public function related()
     {
-        return $this->morphTo(null, 'related_unique_id', 'related_type', 'image_url' );
+        return $this->morphTo(null, 'related_id', 'related_type', 'image_url');
     }
 }

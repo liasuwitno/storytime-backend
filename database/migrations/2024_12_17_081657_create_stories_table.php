@@ -14,8 +14,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('stories', function (Blueprint $table) {
-            $table->id();
-            $table->string('unique_id')->unique();
+            $table->uuid('id')->primary();
             $table->string('title');
             $table->string('slug');
             $table->text('body');

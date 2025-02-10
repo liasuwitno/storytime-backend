@@ -15,22 +15,34 @@ class CategorySeeder extends Seeder
     {
         $data = [
             [
-                'name' => 'Fiction'
+                'name' => 'Fiction',
+                'created_at' => now(),
+                'updated_at' => now()
             ],
             [
-                'name' => 'Horror'
+                'name' => 'Horror',
+                'created_at' => now(),
+                'updated_at' => now()
             ],
             [
-                'name' => 'Comedy'
+                'name' => 'Comedy',
+                'created_at' => now(),
+                'updated_at' => now()
             ],
             [
-                'name' => 'Thriller'
+                'name' => 'Thriller',
+                'created_at' => now(),
+                'updated_at' => now()
             ],
             [
-                'name' => 'Romance'
+                'name' => 'Romance',
+                'created_at' => now(),
+                'updated_at' => now()
             ],
             [
-                'name' => 'Adventure'
+                'name' => 'Adventure',
+                'created_at' => now(),
+                'updated_at' => now()
             ],
         ];
 

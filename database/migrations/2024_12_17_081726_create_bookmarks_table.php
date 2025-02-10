@@ -12,9 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('bookmarks', function (Blueprint $table) {
-            $table->id();
-            $table->foreignUuid('user_id')->references('unique_id')->on('users');
-            $table->foreignId('story_id')->references('id')->on('stories');
+            $table->uuid('id')->primary();
+            $table->foreignUuid('user_id')->references('id')->on('users');
+            $table->foreignUuid('story_id')->references('id')->on('stories');
             $table->timestamps();
         });
     }

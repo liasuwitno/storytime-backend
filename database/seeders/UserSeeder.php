@@ -16,7 +16,7 @@ class UserSeeder extends Seeder
     {
         $data = [
             [
-                'unique_id' => Cuid::make(),
+                'id' => '76fa7e2317beb564fca0dcdd5fc025e9',
                 'username' => 'mokurolia',
                 'email' => 'mokurolia@me.com',
                 'fullname' => 'Lia Sigma Papale',
@@ -25,7 +25,7 @@ class UserSeeder extends Seeder
                 'updated_at' => now()
             ],
             [
-                'unique_id' => Cuid::make(),
+                'id' => '76fa7e2317beb564fca0dcdd5fc02510',
                 'username' => 'kuroneko',
                 'email' => 'kuroneko@me.com',
                 'fullname' => 'Kucing Hitam',
