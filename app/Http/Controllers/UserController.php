@@ -143,9 +143,11 @@ class UserController extends Controller
         }
     }
 
-    public function update(Request $request, string $id)
+    public function update(Request $request)
     {
         try {
+            $currentUser = auth()->user();
+
             $request->validate(
                 [
                     'fullname' => 'required|string|max:100',
@@ -160,7 +162,7 @@ class UserController extends Controller
                     'new_password.required' => 'Masukkan password baru anda'
                 ]
             );
-            $user = User::where('id', $id)->firstOrFail();
+            $user = User::where('id', $currentUser->id)->firstOrFail();
 
             if (!Hash::check($request->old_password, $user->password)) {
                 return response()->json([

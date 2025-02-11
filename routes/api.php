@@ -43,7 +43,7 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
 
     // USER ====>
     Route::get('/profile', [UserController::class, 'profileUser']);
-    Route::put('/update-profile/{id}', [UserController::class, 'update']);
+    Route::put('/update-profile', [UserController::class, 'update']);
     Route::get('/user-stories', [StoryController::class, 'userStories']);
 
     Route::post('/logout', [UserController::class, 'logout']);
