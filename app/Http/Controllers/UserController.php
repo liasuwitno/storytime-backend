@@ -148,37 +148,52 @@ class UserController extends Controller
         try {
             $currentUser = auth()->user();
 
+            // Validasi tanpa wajib mengisi password
             $request->validate(
                 [
                     'fullname' => 'required|string|max:100',
-                    'old_password' => 'required|string|min:8',
-                    'new_password' => 'required|string|confirmed|min:8',
+                    'old_password' => 'nullable|string|min:8', // Jadi nullable
+                    'new_password' => 'nullable|string|confirmed|min:8', // Jadi nullable
                     'bio' => 'nullable|string',
                     'avatar' => 'nullable|string'
                 ],
                 [
                     'fullname.required' => 'Fullname tidak boleh kosong',
-                    'old_password.required' => 'Password lama harus di isi',
-                    'new_password.required' => 'Masukkan password baru anda'
                 ]
             );
+
             $user = User::where('id', $currentUser->id)->firstOrFail();
 
-            if (!Hash::check($request->old_password, $user->password)) {
-                return response()->json([
-                    'code' => 422,
-                    'status' => 'error',
-                    'data' => null,
-                    'message' => 'Old Password tidak sesuai, periksa lagi!'
-                ], 422);
-            };
+            // Cek apakah user ingin mengubah password
+            if ($request->filled('old_password') || $request->filled('new_password')) {
+                if (!$request->filled('old_password') || !$request->filled('new_password')) {
+                    return response()->json([
+                        'code' => 422,
+                        'status' => 'error',
+                        'data' => null,
+                        'message' => 'Jika ingin mengubah password, semua field password harus diisi!',
+                    ], 422);
+                }
 
-            $user->update([
-                'fullname' => $request->fullname,
-                'password' => $request->new_password ? Hash::make($request->new_password) : $user->password,
-                'bio' => $request->bio,
-                'avatar' => $request->avatar
-            ]);
+                // Cek apakah password lama cocok
+                if (!Hash::check($request->old_password, $user->password)) {
+                    return response()->json([
+                        'code' => 422,
+                        'status' => 'error',
+                        'data' => null,
+                        'message' => 'Old Password tidak sesuai, periksa lagi!',
+                    ], 422);
+                }
+
+                // Update password
+                $user->password = Hash::make($request->new_password);
+            }
+
+            // Update nama, bio, dan avatar tanpa masalah
+            $user->fullname = $request->fullname;
+            $user->bio = $request->bio;
+            $user->avatar = $request->avatar;
+            $user->save();
 
             return response()->json([
                 'code' => 200,
@@ -195,6 +210,7 @@ class UserController extends Controller
             ], 500);
         }
     }
+
 
     public function profileUser()
     {
