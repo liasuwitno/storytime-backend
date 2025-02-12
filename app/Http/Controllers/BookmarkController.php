@@ -19,6 +19,7 @@ class BookmarkController extends Controller
             $user = auth()->user();
 
             $bookmarks = Bookmark::where('user_id', $user->unique_id)
+            ->orderBy('created_at', 'desc')
                 ->with(['story' => function ($query) {
                     $query->where('is_deleted', false)
                         ->with(['user:id,fullname,avatar', 'images', 'category:id,name']);

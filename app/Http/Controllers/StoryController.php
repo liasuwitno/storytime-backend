@@ -86,7 +86,8 @@ class StoryController extends Controller
             $perPage = $request->query('per_page', 5);
 
             $stories = Story::with(['user:id,fullname,avatar', 'category:id,name', 'images'])
-                ->paginate($perPage, ['*'], 'page', $page);
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
 
             $bookmarkedStoryIds = auth()->check()
                 ? Bookmark::where('user_id', auth()->user()->unique_id)->pluck('story_id')->toArray()
