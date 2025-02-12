@@ -250,18 +250,17 @@ class StoryController extends Controller
         try {
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
-                    $query->with('images')  // Eager load images using polymorphic relationship
-                        ->join('users', 'stories.user_id', '=', 'users.id')
-                        ->select(
+                    $query->with('images')  // Tetap eager load images
+                        ->addSelect([
                             'stories.id as story_id',
                             'stories.title',
                             'stories.slug',
                             'stories.body',
                             'stories.category_id',
                             'stories.created_at',
-                            'users.fullname as author_name',
-                            'users.avatar as author_avatar'
-                        );
+                            'stories.user_id' // Tambahin biar bisa ambil relasi user
+                        ])
+                        ->with('user:id,fullname,avatar'); // Load relasi user dengan hanya field yang dibutuhkan
                 }])
                 ->get();
 
@@ -286,8 +285,8 @@ class StoryController extends Controller
                             'title' => $story->title,
                             'slug' => $story->slug,
                             'author' => [
-                                'name' => $story->author_name,
-                                'avatar' => $story->author_avatar,
+                                'name' => $story->user->fullname,
+                                'avatar' => $story->user->avatar,
                             ],
                             'content' => $story->body,
                             'images' => $story->images->map(fn($image) => [
@@ -315,6 +314,7 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
 
 
     /**
