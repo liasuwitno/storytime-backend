@@ -86,8 +86,8 @@ class StoryController extends Controller
             $perPage = $request->query('per_page', 5);
 
             $stories = Story::with(['user:id,fullname,avatar', 'category:id,name', 'images'])
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage, ['*'], 'page', $page);
 
             $bookmarkedStoryIds = auth()->check()
                 ? Bookmark::where('user_id', auth()->user()->unique_id)->pluck('story_id')->toArray()
@@ -251,17 +251,20 @@ class StoryController extends Controller
         try {
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
-                    $query->with('images')  // Tetap eager load images
-                        ->addSelect([
-                            'stories.id as story_id',
+                    $query->where('is_deleted', false)  // Add this to filter out deleted stories
+                        ->with(['images' => function ($q) {  // Explicitly define the images relationship loading
+                            $q->select('id', 'related_id', 'related_type', 'image_url', 'identifier');
+                        }])
+                        ->select([
+                            'stories.id',  // Changed from story_id to id to match the actual column name
                             'stories.title',
                             'stories.slug',
                             'stories.body',
                             'stories.category_id',
                             'stories.created_at',
-                            'stories.user_id' // Tambahin biar bisa ambil relasi user
+                            'stories.user_id'
                         ])
-                        ->with('user:id,fullname,avatar'); // Load relasi user dengan hanya field yang dibutuhkan
+                        ->with('user:id,fullname,avatar');
                 }])
                 ->get();
 
@@ -281,8 +284,12 @@ class StoryController extends Controller
                     'category_id' => $category->id,
                     'category_name' => $category->name,
                     'stories' => $category->stories->map(function ($story) {
+                        // Add debugging
+                        \Log::info('Story ID: ' . $story->id);
+                        \Log::info('Images count: ' . $story->images->count());
+
                         return [
-                            'story_id' => $story->story_id,
+                            'story_id' => $story->id,  // Changed from story_id to id
                             'title' => $story->title,
                             'slug' => $story->slug,
                             'author' => [
@@ -293,7 +300,7 @@ class StoryController extends Controller
                             'images' => $story->images->map(fn($image) => [
                                 'url' => $image->image_url,
                                 'identifier' => $image->identifier
-                            ]),
+                            ])->values(),  // Added values() to reindex the array
                             'created_at' => $story->created_at->toIso8601String(),
                         ];
                     }),
@@ -307,6 +314,7 @@ class StoryController extends Controller
                 'message' => 'Berhasil mendapatkan data stories'
             ], 200);
         } catch (\Exception $e) {
+            \Log::error('Error in getStoriesByCategory: ' . $e->getMessage());  // Add logging for debugging
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
@@ -315,6 +323,7 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
 
 
 

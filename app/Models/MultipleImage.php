@@ -17,6 +17,6 @@ class MultipleImage extends Model
 
     public function related()
     {
-        return $this->morphTo(null, 'related_id', 'related_type', 'image_url');
+        return $this->morphTo(null, 'related_id', 'related_type');
     }
 }
