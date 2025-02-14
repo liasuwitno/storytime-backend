@@ -19,6 +19,32 @@ use Illuminate\Support\Facades\Log;
 
 class StoryController extends Controller
 {
+
+    // SEBUAH METHOD UNTUK MERUBAH DATA STORY MENJADI BENTUK YANG DIINGINKAN UNTUK MENGHINDARI DUPLIKASI DATA
+    private function transformStoryData($story)
+    {
+        $isBookmarked = Bookmark::where('story_id', $story->id)->exists() ?? false;
+
+        return [
+            'story_id' => $story->id,
+            'title' => $story->title,
+            'slug' => $story->slug,
+            'author' => [
+                'name' => $story->user->fullname,
+                'avatar' => $story->user->avatar,
+            ],
+            'content' => $story->body,
+            'images' => $story->images->map(fn($image) => [
+                'url' => $image->image_url,
+                'identifier' => $image->identifier
+            ]),
+            'is_bookmark' => $isBookmarked,
+            'category_id' => $story->category_id,
+            'category_name' => $story->category->name,
+            'created_at' => $story->created_at->toIso8601String(),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -82,6 +108,7 @@ class StoryController extends Controller
     public function userStories(Request $request)
     {
         try {
+            $this->authorize('viewAny', Story::class);
             $page = $request->query('page', 1);
             $perPage = $request->query('per_page', 5);
 
@@ -190,27 +217,7 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $formattedStories = $stories->map(function ($story) {
-
-                $currentUser = auth()->user() ?? null;
-
-                return [
-                    'story_id' => $story->id,
-                    'title' => $story->title,
-                    'slug' => $story->slug,
-                    'author' => [
-                        'name' => $story->user->fullname,
-                        'avatar' => $story->user->avatar,
-                    ],
-                    'content' => $story->body,
-                    'images' => $story->images->map(fn($image) => [
-                        'url' => $image->image_url,
-                        'identifier' => $image->identifier
-                    ]),
-                    'category_name' => $story->category->name,
-                    'is_bookmark' => $currentUser ? Bookmark::where('story_id', $story->id)->where('user_id', auth()->user()->id)->exists() : false,
-                ];
-            });
+            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story));
 
             return response()->json([
                 'code' => 200,
@@ -283,27 +290,7 @@ class StoryController extends Controller
                 return [
                     'category_id' => $category->id,
                     'category_name' => $category->name,
-                    'stories' => $category->stories->map(function ($story) {
-                        // Add debugging
-                        \Log::info('Story ID: ' . $story->id);
-                        \Log::info('Images count: ' . $story->images->count());
-
-                        return [
-                            'story_id' => $story->id,  // Changed from story_id to id
-                            'title' => $story->title,
-                            'slug' => $story->slug,
-                            'author' => [
-                                'name' => $story->user->fullname,
-                                'avatar' => $story->user->avatar,
-                            ],
-                            'content' => $story->body,
-                            'images' => $story->images->map(fn($image) => [
-                                'url' => $image->image_url,
-                                'identifier' => $image->identifier
-                            ])->values(),  // Added values() to reindex the array
-                            'created_at' => $story->created_at->toIso8601String(),
-                        ];
-                    }),
+                    'stories' => $category->stories->map(fn($story) => $this->transformStoryData($story)),
                 ];
             });
 
@@ -314,7 +301,6 @@ class StoryController extends Controller
                 'message' => 'Berhasil mendapatkan data stories'
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('Error in getStoriesByCategory: ' . $e->getMessage());  // Add logging for debugging
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
@@ -411,30 +397,7 @@ class StoryController extends Controller
         }
     }
 
-    // SEBUAH METHOD UNTUK MERUBAH DATA STORY MENJADI BENTUK YANG DIINGINKAN UNTUK MENGHINDARI DUPLIKASI DATA
-    private function transformStoryData($story)
-    {
-        $isBookmarked = Bookmark::where('story_id', $story->id)->exists() ?? false;
 
-        return [
-            'story_id' => $story->id,
-            'title' => $story->title,
-            'slug' => $story->slug,
-            'author' => [
-                'name' => $story->user->fullname,
-                'avatar' => $story->user->avatar,
-            ],
-            'content' => $story->body,
-            'images' => $story->images->map(fn($image) => [
-                'url' => $image->image_url,
-                'identifier' => $image->identifier
-            ]),
-            'is_bookmark' => $isBookmarked,
-            'category_id' => $story->category_id,
-            'category_name' => $story->category->name,
-            'created_at' => $story->created_at->toIso8601String(),
-        ];
-    }
 
     /**
      * Display the specified resource.
@@ -567,7 +530,7 @@ class StoryController extends Controller
     public function deleteStory(Request $request, $id)
     {
         try {
-            // Cari story berdasarkan unique_id dan user_id yang sedang login
+            // Cari story berdasarkan id dan user_id yang sedang login
             $story = Story::where('id', $id)
                 ->where('user_id', $request->user()->id) // Validasi kepemilikan
                 ->where('is_deleted', 0) // Pastikan story belum dihapus
