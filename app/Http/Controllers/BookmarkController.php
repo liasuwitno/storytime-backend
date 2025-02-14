@@ -18,8 +18,8 @@ class BookmarkController extends Controller
 
             $user = auth()->user();
 
-            $bookmarks = Bookmark::where('user_id', $user->unique_id)
-            ->orderBy('created_at', 'desc')
+            $bookmarks = Bookmark::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
                 ->with(['story' => function ($query) {
                     $query->where('is_deleted', false)
                         ->with(['user:id,fullname,avatar', 'images', 'category:id,name']);
@@ -99,7 +99,7 @@ class BookmarkController extends Controller
         try {
             // Validasi untuk user_id berdasarkan unique_id
             $validatedData = $request->validate([
-                'user_id' => 'required|exists:users,id',  
+                'user_id' => 'required|exists:users,id',
                 'story_id' => 'required|exists:stories,id',
             ]);
 
