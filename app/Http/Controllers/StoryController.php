@@ -240,17 +240,19 @@ class StoryController extends Controller
     }
 
     // LIA CODE NEW
-    public function getStoriesByCategory()
+    public function getStoriesByCategory(Request $request)
     {
         try {
+            $user = $request->user(); // Ambil user yang sedang login (bisa null kalau belum login)
+
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
-                    $query->where('is_deleted', false)  // Add this to filter out deleted stories
-                        ->with(['images' => function ($q) {  // Explicitly define the images relationship loading
+                    $query->where('is_deleted', false)
+                        ->with(['images' => function ($q) {
                             $q->select('id', 'related_id', 'related_type', 'image_url', 'identifier');
                         }])
                         ->select([
-                            'stories.id',  // Changed from story_id to id to match the actual column name
+                            'stories.id',
                             'stories.title',
                             'stories.slug',
                             'stories.body',
@@ -262,7 +264,6 @@ class StoryController extends Controller
                 }])
                 ->get();
 
-            // HANDLING WHEN STORY IS EMPTY
             if ($categories->isEmpty()) {
                 return response()->json([
                     'code' => 404,
@@ -273,11 +274,11 @@ class StoryController extends Controller
             }
 
             // Format data agar sesuai dengan struktur JSON yang diinginkan
-            $formattedData = $categories->map(function ($category) {
+            $formattedData = $categories->map(function ($category) use ($user) {
                 return [
                     'category_id' => $category->id,
                     'category_name' => $category->name,
-                    'stories' => $category->stories->map(fn($story) => $this->transformStoryData($story)),
+                    'stories' => $category->stories->map(fn($story) => $this->transformStoryData($story, $user)),
                 ];
             });
 
@@ -296,6 +297,7 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
 
 
 
