@@ -18,6 +18,8 @@ class BookmarkController extends Controller
 
             $user = auth()->user();
 
+            $this->authorize('viewList', [Bookmark::class, $user]);
+
             $bookmarks = Bookmark::where('user_id', $user->unique_id)
             ->orderBy('created_at', 'desc')
                 ->with(['story' => function ($query) {
@@ -55,7 +57,7 @@ class BookmarkController extends Controller
                     'category_name' => $bookmark->story->category->name,
                     'created_at' => $bookmark->story->created_at->toIso8601String(),
                 ];
-            })->filter();
+            })->values();
 
             return response()->json([
                 'code' => 200,
@@ -97,7 +99,8 @@ class BookmarkController extends Controller
     public function toggleBookmark(Request $request)
     {
         try {
-            // Validasi untuk user_id berdasarkan unique_id
+
+            // Validasi untuk user_id berdasarkan id
             $validatedData = $request->validate([
                 'user_id' => 'required|exists:users,id',  
                 'story_id' => 'required|exists:stories,id',

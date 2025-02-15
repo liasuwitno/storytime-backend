@@ -21,7 +21,7 @@ class StoryController extends Controller
 {
 
     // SEBUAH METHOD UNTUK MERUBAH DATA STORY MENJADI BENTUK YANG DIINGINKAN UNTUK MENGHINDARI DUPLIKASI DATA
-    private function transformStoryData($story)
+    private function transformStoryData($story, $user = null)
     {
         $isBookmarked = Bookmark::where('story_id', $story->id)->exists() ?? false;
 
@@ -38,7 +38,7 @@ class StoryController extends Controller
                 'url' => $image->image_url,
                 'identifier' => $image->identifier
             ]),
-            'is_bookmark' => $isBookmarked,
+            'is_bookmark' => $user ? Bookmark::where('user_id', $user->id)->where('story_id', $story->id)->exists() : false,
             'category_id' => $story->category_id,
             'category_name' => $story->category->name,
             'created_at' => $story->created_at->toIso8601String(),
@@ -48,12 +48,18 @@ class StoryController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         try {
+            // Ambil limit dari query params, default 10
+            $limit = $request->query('limit', 10);
+
+            // Query stories terbaru dengan limit
             $stories = Story::where('is_deleted', false)
                 ->with(['user:id,fullname,avatar', 'images', 'category:id,name'])
-                ->paginate(10);
+                ->latest()
+                ->limit($limit)
+                ->get();
 
             if ($stories->isEmpty()) {
                 return response()->json([
@@ -64,35 +70,13 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $formattedStories = $stories->map(function ($story) {
-                return [
-                    'story_id' => $story->id,
-                    'title' => $story->title,
-                    'slug' => $story->slug,
-                    'author' => [
-                        'name' => $story->user->fullname,
-                        'avatar' => $story->user->avatar,
-                    ],
-                    'content' => $story->body,
-                    'images' => $story->images->map(fn($image) => [
-                        'url' => $image->image_url,
-                        'identifier' => $image->identifier
-                    ]),
-                    'category_name' => $story->category->name,
-                    'created_at' => $story->created_at->toIso8601String(),
-                ];
-            });
+            // Format hasil query
+            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story));
 
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
                 'data' => $formattedStories,
-                'pagination' => [
-                    'total' => $stories->total(),
-                    'per_page' => $stories->perPage(),
-                    'current_page' => $stories->currentPage(),
-                    'last_page' => $stories->lastPage(),
-                ],
                 'message' => 'Stories berhasil didapatkan',
             ], 200);
         } catch (\Exception $e) {
@@ -100,15 +84,18 @@ class StoryController extends Controller
                 'code' => 500,
                 'status' => 'error',
                 'data' => null,
-                'message' => 'Terjadi kesalahan, coba lagi nanti.'
+                'message' => 'Terjadi kesalahan, coba lagi nanti.',
+                'error' => $e->getMessage(), // Biar tahu error-nya apa
             ], 500);
         }
     }
+
 
     public function userStories(Request $request)
     {
         try {
             $this->authorize('viewAny', Story::class);
+
             $page = $request->query('page', 1);
             $perPage = $request->query('per_page', 5);
 
@@ -545,6 +532,7 @@ class StoryController extends Controller
                 ], 404);
             }
 
+            $this->authorize('delete', $story);
             // Update kolom is_deleted
             $story->is_deleted = 1;
             $story->save();
