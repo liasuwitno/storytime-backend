@@ -37,6 +37,7 @@ class StoryController extends Controller
             'title' => $story->title,
             'slug' => $story->slug,
             'author' => [
+                'user_id' => $story->user->id,
                 'name' => $story->user->fullname,
                 'avatar' => $story->user->avatar,
             ],
@@ -58,6 +59,11 @@ class StoryController extends Controller
     public function index(Request $request)
     {
         try {
+            $token = $request->bearerToken();
+            $checkToken = PersonalAccessToken::findToken($token);
+
+            $user = !$token || !$checkToken ? null : $checkToken->tokenable;
+
             // Ambil limit dari query params, default 10
             $limit = $request->query('limit', 10);
 
@@ -78,7 +84,7 @@ class StoryController extends Controller
             }
 
             // Format hasil query
-            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story));
+            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story, $user));
 
             return response()->json([
                 'code' => 200,
@@ -254,9 +260,12 @@ class StoryController extends Controller
         // JIKA BELUM LOGIN MAKA $USER AKAN NULL
         // JIKA SUDAH LOGIN MAKA $USER AKAN BERISI DATA USER
 
-        $user = PersonalAccessToken::findToken($request->bearerToken())?->tokenable ?? null;
-        
         try {
+            $token = $request->bearerToken();
+            $checkToken = PersonalAccessToken::findToken($token);
+
+            $user = !$token || !$checkToken ? null : $checkToken?->tokenable;
+
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
                     $query->where('is_deleted', false)
@@ -402,7 +411,10 @@ class StoryController extends Controller
     public function show(Request $request, string $slug)
     {
 
-        $user = PersonalAccessToken::findToken($request->bearerToken())?->tokenable ?? null;
+        $token = $request->bearerToken();
+        $checkToken = PersonalAccessToken::findToken($token);
+
+        $user = !$token || !$checkToken ? null : $checkToken?->tokenable;
 
         try {
             $story = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images', 'bookmarks'])
