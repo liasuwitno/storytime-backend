@@ -15,16 +15,26 @@ use CaliCastle\Cuid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
+use Laravel\Sanctum\PersonalAccessToken;
 
 class StoryController extends Controller
 {
+    // KODE BUAT NENTUIN APAKAH STORY SUDAH DI BOOKMARK ATAU BELUM (DIBUATKAN METHOD TERPISAH SUPAYA LEBIH RAPI)
+    private function checkBookmarkStatus($storyId, $user)
+    {
+        if (!$user) {
+            return false;
+        }
 
-    // SEBUAH METHOD UNTUK MERUBAH DATA STORY MENJADI BENTUK YANG DIINGINKAN UNTUK MENGHINDARI DUPLIKASI DATA
+        $bookmark = Bookmark::where('user_id', $user->id)
+            ->where('story_id', $storyId)
+            ->first();
+
+        return (bool) $bookmark;
+    }
+
     private function transformStoryData($story, $user = null)
     {
-        $isBookmarked = Bookmark::where('story_id', $story->id)->exists() ?? false;
-
         return [
             'story_id' => $story->id,
             'title' => $story->title,
@@ -38,7 +48,7 @@ class StoryController extends Controller
                 'url' => $image->image_url,
                 'identifier' => $image->identifier
             ]),
-            'is_bookmark' => $user ? Bookmark::where('user_id', $user->id)->where('story_id', $story->id)->exists() : false,
+            'is_bookmark' => $this->checkBookmarkStatus($story->id, $user),
             'category_id' => $story->category_id,
             'category_name' => $story->category->name,
             'created_at' => $story->created_at->toIso8601String(),
@@ -84,8 +94,7 @@ class StoryController extends Controller
                 'code' => 500,
                 'status' => 'error',
                 'data' => null,
-                'message' => 'Terjadi kesalahan, coba lagi nanti.',
-                'error' => $e->getMessage(), // Biar tahu error-nya apa
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
@@ -242,9 +251,21 @@ class StoryController extends Controller
     // LIA CODE NEW
     public function getStoriesByCategory(Request $request)
     {
-        try {
-            $user = $request->user(); // Ambil user yang sedang login (bisa null kalau belum login)
+        // ==============================================
+        // KODE INI BUAT NENTUIN APAKAH USER SUDAH LOGIN ATAU BELUM SECARA MANUAL
+        // MENGGUNAKAN PERSONAL ACCESS TOKEN YANG DIKIRIMKAN
+        // JIKA BELUM LOGIN MAKA $USER AKAN NULL
+        // JIKA SUDAH LOGIN MAKA $USER AKAN BERISI DATA USER
 
+        $user = null;
+        $bearer = $request->bearerToken();
+
+        if ($bearer) {
+            $user = PersonalAccessToken::findToken($bearer)?->tokenable;
+        }
+        // ==============================================
+
+        try {
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
                     $query->where('is_deleted', false)
@@ -293,14 +314,10 @@ class StoryController extends Controller
                 'code' => 500,
                 'status' => 'error',
                 'data' => null,
-                'message' => 'Terjadi kesalahan, coba lagi nanti.'
+                'message' => $e->getMessage()
             ], 500);
         }
     }
-
-
-
-
 
     /**
      * Store a newly created resource in storage.
