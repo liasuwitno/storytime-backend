@@ -35,7 +35,7 @@ Route::get('/categories-all', [CategoryController::class, 'index']);
 Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']);
 Route::get('/story-detail/{slug}', [StoryController::class, 'show']);
 Route::get('/spesific-stories/{category}', [StoryController::class, 'spesificStories']);
-
+Route::get('/latest-stories', [StoryController::class, 'index']);
 
 Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     // CATEGORY ====>
