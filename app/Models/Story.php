@@ -40,4 +40,8 @@ class Story extends Model
     {
         return $this->morphMany(MultipleImage::class, 'related', 'related_type', 'related_id');
     }
+    public function bookmarks()
+    {
+        return $this->hasMany(Bookmark::class);
+    }
 }

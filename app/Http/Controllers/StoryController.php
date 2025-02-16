@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\StoryCreateEvent;
 use App\Http\Requests\StoreStoryRequest;
 use App\Http\Requests\UpdateStoryRequest;
 use App\Models\Bookmark;
@@ -11,10 +10,8 @@ use App\Models\MultipleImage;
 use App\Models\Notification;
 use Illuminate\Support\Str;
 use App\Models\Story;
-use CaliCastle\Cuid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
 
 class StoryController extends Controller
@@ -257,14 +254,8 @@ class StoryController extends Controller
         // JIKA BELUM LOGIN MAKA $USER AKAN NULL
         // JIKA SUDAH LOGIN MAKA $USER AKAN BERISI DATA USER
 
-        $user = null;
-        $bearer = $request->bearerToken();
-
-        if ($bearer) {
-            $user = PersonalAccessToken::findToken($bearer)?->tokenable;
-        }
-        // ==============================================
-
+        $user = PersonalAccessToken::findToken($request->bearerToken())?->tokenable ?? null;
+        
         try {
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
@@ -408,11 +399,15 @@ class StoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $slug)
+    public function show(Request $request, string $slug)
     {
+
+        $user = PersonalAccessToken::findToken($request->bearerToken())?->tokenable ?? null;
+
         try {
-            $story = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images'])
-                ->where('slug', $slug)->first();
+            $story = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images', 'bookmarks'])
+                ->where('slug', $slug)
+                ->first();
 
             if (!$story) {
                 return response()->json([
@@ -423,18 +418,19 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $similarStories = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images'])
+            $similarStories = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images', 'bookmarks'])
                 ->where('category_id', $story->category_id)
                 ->where('id', '!=', $story->id)
                 ->limit(5)
                 ->get();
 
+            // Pass the user to transformStoryData
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
                 'data' => [
-                    'story' => $this->transformStoryData($story),
-                    'similar_stories' => $similarStories->map(fn($story) => $this->transformStoryData($story)),
+                    'story' => $this->transformStoryData($story, $user),
+                    'similar_stories' => $similarStories->map(fn($story) => $this->transformStoryData($story, $user)),
                 ],
                 'message' => 'Data Story berhasil diambil.'
             ], 200);

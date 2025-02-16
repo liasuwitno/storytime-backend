@@ -125,7 +125,29 @@ class UserController extends Controller
     public function logout(Request $request)
     {
         try {
-            $request->user()->currentAccessToken()->delete();
+            $user = $request->user();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => 'error',
+                    'code' => 401,
+                    'message' => 'User tidak terautentikasi',
+                    'data' => null
+                ], 401);
+            }
+
+            $token = $user->currentAccessToken();
+
+            if (!$token) {
+                return response()->json([
+                    'status' => 'success',
+                    'code' => 200,
+                    'message' => 'User sudah logout',
+                    'data' => null
+                ], 200);
+            }
+
+            $token->delete();
 
             return response()->json([
                 'status' => 'success',
