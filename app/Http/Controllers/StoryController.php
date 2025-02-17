@@ -116,14 +116,24 @@ class StoryController extends Controller
 
             $page = $request->query('page', 1);
             $perPage = $request->query('per_page', 5);
+            $userId = $request->query('user_id'); // Add this to get user_id from query params
 
             $stories = Story::with(['user:id,fullname,avatar', 'category:id,name', 'images'])
+                ->when($userId, function ($query, $userId) {
+                    // This will only run if $userId is present
+                    return $query->where('user_id', $userId);
+                }, function ($query) {
+                    // This will run if $userId is not present (show all stories)
+                    return $query;
+                })
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
             $bookmarkedStoryIds = auth()->check()
                 ? Bookmark::where('user_id', auth()->user()->id)->pluck('story_id')->toArray()
                 : [];
+
+            // Rest of your code remains the same...
 
             if ($stories->isEmpty()) {
                 return response()->json([
@@ -222,7 +232,7 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story, ));
+            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story,));
 
             return response()->json([
                 'code' => 200,
