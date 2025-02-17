@@ -118,6 +118,8 @@ class StoryController extends Controller
             $perPage = $request->query('per_page', 5);
 
             $stories = Story::with(['user:id,fullname,avatar', 'category:id,name', 'images'])
+                ->where('user_id', auth()->user()->id)
+                ->where('is_deleted', false)
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
@@ -140,8 +142,9 @@ class StoryController extends Controller
                     'title' => $story->title,
                     'slug' => $story->slug,
                     'author' => [
+                        'user_id' => $story->user->id,
                         'name' => $story->user->fullname,
-                        'avatar' => $story->user->avatar ?? asset('default-avatar.jpg'),
+                        'avatar' => $story->user->avatar ?? null,
                     ],
                     'content' => $story->body,
                     'images' => $story->images->map(function ($image) {
@@ -222,7 +225,7 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story, ));
+            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story,));
 
             return response()->json([
                 'code' => 200,
@@ -416,7 +419,6 @@ class StoryController extends Controller
     }
 
 
-
     /**
      * Display the specified resource.
      */
@@ -436,6 +438,7 @@ class StoryController extends Controller
 
         try {
             $story = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images', 'bookmarks'])
+                ->where('is_deleted', false)
                 ->where('slug', $slug)
                 ->first();
 
@@ -562,10 +565,9 @@ class StoryController extends Controller
     public function deleteStory(Request $request, $id)
     {
         try {
-            // Cari story berdasarkan id dan user_id yang sedang login
             $story = Story::where('id', $id)
                 ->where('user_id', $request->user()->id) // Validasi kepemilikan
-                ->where('is_deleted', 0) // Pastikan story belum dihapus
+                ->where('is_deleted', 0)
                 ->first();
 
             if (!$story) {
