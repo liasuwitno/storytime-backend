@@ -122,7 +122,7 @@ class StoryController extends Controller
                 ->paginate($perPage, ['*'], 'page', $page);
 
             $bookmarkedStoryIds = auth()->check()
-                ? Bookmark::where('user_id', auth()->user()->unique_id)->pluck('story_id')->toArray()
+                ? Bookmark::where('user_id', auth()->user()->id)->pluck('story_id')->toArray()
                 : [];
 
             if ($stories->isEmpty()) {

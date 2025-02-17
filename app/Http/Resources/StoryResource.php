@@ -16,7 +16,6 @@ class StoryResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'unique_id' => $this->unique_id,
             'title' => $this->title,
             'slug' => $this->slug,
             'body' => $this->body,
