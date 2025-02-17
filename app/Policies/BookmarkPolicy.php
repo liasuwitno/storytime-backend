@@ -13,7 +13,7 @@ class BookmarkPolicy
     
     public function create(User $user): bool
     {
-        return $user->id !== null;
+        return true;
     }
 
     public function viewList(User $user, User $profileUser): bool

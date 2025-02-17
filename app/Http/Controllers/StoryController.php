@@ -222,7 +222,7 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story));
+            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story, ));
 
             return response()->json([
                 'code' => 200,

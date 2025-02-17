@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bookmark;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class BookmarkController extends Controller
 {
@@ -98,26 +99,25 @@ class BookmarkController extends Controller
     public function toggleBookmark(Request $request)
     {
         try {
+            // Check if user is authenticated
+            if (!auth()->check()) {
+                return response()->json([
+                    'code' => 401,
+                    'status' => 'error',
+                    'message' => 'User must be logged in.',
+                ], 401);
+            }
 
-            // Validasi untuk user_id berdasarkan id
+            // Validate request
             $validatedData = $request->validate([
                 'user_id' => 'required|exists:users,id',
                 'story_id' => 'required|exists:stories,id',
             ]);
 
-            // Ambil user yang sedang login
+            // Get authenticated user
             $user = auth()->user();
 
-            // Pastikan user diizinkan menambahkan bookmark
-            $this->authorize('create', Bookmark::class);
-
-            // Cek apakah bookmark sudah ada
-            $bookmark = Bookmark::where([
-                'user_id' => $user->id,
-                'story_id' => $validatedData['story_id'],
-            ])->first();
-
-            // Cek apakah user_id yang dikirimkan sesuai dengan unique_id pengguna yang sedang login
+            // Verify the user is operating on their own bookmarks
             if ($user->id !== $validatedData['user_id']) {
                 return response()->json([
                     'code' => 403,
@@ -126,14 +126,14 @@ class BookmarkController extends Controller
                 ], 403);
             }
 
-            // Cek apakah bookmark sudah ada
+            // Check if bookmark exists
             $bookmark = Bookmark::where([
-                'user_id' => $user->id,  // Gunakan unique_id di sini
+                'user_id' => $user->id,
                 'story_id' => $validatedData['story_id'],
             ])->first();
 
             if ($bookmark) {
-                // Jika sudah ada, hapus
+                // If exists, delete it
                 $bookmark->delete();
                 return response()->json([
                     'code' => 200,
@@ -141,9 +141,9 @@ class BookmarkController extends Controller
                     'message' => 'Bookmark berhasil dihapus.',
                 ], 200);
             } else {
-                // Jika belum ada, tambahkan
+                // If doesn't exist, create it
                 Bookmark::create([
-                    'user_id' => $user->id,  // Pastikan menggunakan unique_id
+                    'user_id' => $user->id,
                     'story_id' => $validatedData['story_id'],
                 ]);
                 return response()->json([
@@ -152,7 +152,7 @@ class BookmarkController extends Controller
                     'message' => 'Bookmark berhasil ditambahkan.',
                 ], 201);
             }
-        } catch (\Exception $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'code' => 422,
                 'status' => 'error',
@@ -162,7 +162,7 @@ class BookmarkController extends Controller
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
-                'message' => $e->getMessage(),
+                'message' => 'An unexpected error occurred.',
             ], 500);
         }
     }
