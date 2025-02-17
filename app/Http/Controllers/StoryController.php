@@ -60,9 +60,15 @@ class StoryController extends Controller
     {
         try {
             $token = $request->bearerToken();
-            $checkToken = PersonalAccessToken::findToken($token);
+            $user = null;
 
-            $user = !$token || !$checkToken ? null : $checkToken->tokenable;
+            if ($token) {
+                $checkToken = PersonalAccessToken::findToken($token);
+
+                if ($checkToken && (!$checkToken->expires_at || now()->lt($checkToken->expires_at))) {
+                    $user = $checkToken->tokenable;
+                }
+            }
 
             // Ambil limit dari query params, default 10
             $limit = $request->query('limit', 10);
@@ -262,9 +268,15 @@ class StoryController extends Controller
 
         try {
             $token = $request->bearerToken();
-            $checkToken = PersonalAccessToken::findToken($token);
+            $user = null;
 
-            $user = !$token || !$checkToken ? null : $checkToken?->tokenable;
+            if ($token) {
+                $checkToken = PersonalAccessToken::findToken($token);
+
+                if ($checkToken && (!$checkToken->expires_at || now()->lt($checkToken->expires_at))) {
+                    $user = $checkToken->tokenable;
+                }
+            }
 
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
@@ -412,9 +424,15 @@ class StoryController extends Controller
     {
 
         $token = $request->bearerToken();
-        $checkToken = PersonalAccessToken::findToken($token);
+        $user = null;
 
-        $user = !$token || !$checkToken ? null : $checkToken?->tokenable;
+        if ($token) {
+            $checkToken = PersonalAccessToken::findToken($token);
+
+            if ($checkToken && (!$checkToken->expires_at || now()->lt($checkToken->expires_at))) {
+                $user = $checkToken->tokenable;
+            }
+        }
 
         try {
             $story = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images', 'bookmarks'])

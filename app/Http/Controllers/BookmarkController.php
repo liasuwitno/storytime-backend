@@ -43,6 +43,7 @@ class BookmarkController extends Controller
                     'title' => $bookmark->story->title,
                     'slug' => $bookmark->story->slug,
                     'author' => [
+                        'user_id' => $bookmark->story->user->id,
                         'name' => $bookmark->story->user->fullname,
                         'avatar' => $bookmark->story->user->avatar,
                     ],
