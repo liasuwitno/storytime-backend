@@ -3,6 +3,7 @@
 use App\Http\Controllers\BookmarkController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\UploadFileController;
 use App\Http\Controllers\UserController;
@@ -31,6 +32,8 @@ Route::post('/register', [UserController::class, 'store'])->name('register');
 // CATEGORY PUBLIC ====>
 Route::get('/categories-all', [CategoryController::class, 'index']);
 
+//NOTIFICATIONS ====>
+Route::get('/notifications', [NotificationController::class, 'index']);
 //STORY PUBLIC
 Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']);
 Route::get('/story-detail/{slug}', [StoryController::class, 'show']);
