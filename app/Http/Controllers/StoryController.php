@@ -115,8 +115,7 @@ class StoryController extends Controller
             $this->authorize('viewAny', Story::class);
 
             $page = $request->query('page', 1);
-            $perPage = $request->query('per_page', 5);
-            $userId = $request->query('user_id'); // Add this to get user_id from query params
+            $perPage = $request->query('per_page', 10);
 
             $stories = Story::with(['user:id,fullname,avatar', 'category:id,name', 'images'])
                 ->where('user_id', auth()->user()->id)
@@ -195,6 +194,17 @@ class StoryController extends Controller
             $perPage = $request->query('per_page', 10); // Default 10 per halaman
             $search = $request->query('search');
 
+            $token = $request->bearerToken();
+            $user = null;
+
+            if ($token) {
+                $checkToken = PersonalAccessToken::findToken($token);
+
+                if ($checkToken && (!$checkToken->expires_at || now()->lt($checkToken->expires_at))) {
+                    $user = $checkToken->tokenable;
+                }
+            }
+
             $stories = Story::where('is_deleted', false)
                 ->with(['user:id,fullname,avatar', 'images', 'category:id,name'])
                 ->when($category !== 'all-story', function ($query) use ($category) {
@@ -228,7 +238,7 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story,));
+            $formattedStories = $stories->map(fn($story) => $this->transformStoryData($story, $user));
 
             return response()->json([
                 'code' => 200,
