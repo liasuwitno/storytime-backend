@@ -31,7 +31,7 @@ class StoryController extends Controller
         return (bool) $bookmark;
     }
 
-    private function transformStoryData($story, $user = null)
+    private function transformStoryData($story, $user)
     {
         return [
             'story_id' => $story->id,
@@ -40,19 +40,19 @@ class StoryController extends Controller
             'author' => [
                 'user_id' => $story->user->id,
                 'name' => $story->user->fullname,
-                'avatar' => $story->user->avatar,
+                'avatar' => $story->user->avatar ? $story->user->avatar->image_url : null, // Ambil dari multiple_images
             ],
             'content' => $story->body,
             'images' => $story->images->map(fn($image) => [
                 'url' => $image->image_url,
                 'identifier' => $image->identifier
             ]),
-            'is_bookmark' => $this->checkBookmarkStatus($story->id, $user),
-            'category_id' => $story->category_id,
             'category_name' => $story->category->name,
             'created_at' => $story->created_at->toIso8601String(),
+            'is_bookmark' => $user ? $story->bookmarks()->where('user_id', $user->id)->exists() : false,
         ];
     }
+
 
     /**
      * Display a listing of the resource.
@@ -76,7 +76,12 @@ class StoryController extends Controller
 
             // Query stories terbaru dengan limit
             $stories = Story::where('is_deleted', false)
-                ->with(['user:id,fullname,avatar', 'images', 'category:id,name'])
+                ->with([
+                    'user:id,fullname',  // Ambil user tanpa avatar
+                    'user.avatar', // Ambil avatar dari multiple_images
+                    'images',
+                    'category:id,name'
+                ])
                 ->latest()
                 ->limit($limit)
                 ->get();
@@ -110,6 +115,7 @@ class StoryController extends Controller
     }
 
 
+
     public function userStories(Request $request)
     {
         try {
@@ -118,7 +124,12 @@ class StoryController extends Controller
             $page = $request->query('page', 1);
             $perPage = $request->query('per_page', 10);
 
-            $stories = Story::with(['user:id,fullname,avatar', 'category:id,name', 'images'])
+            $stories = Story::with([
+                'user:id,fullname', // Hapus avatar dari sini
+                'user.avatar',      // Ambil avatar dari multiple_images
+                'category:id,name',
+                'images'
+            ])
                 ->where('user_id', auth()->user()->id)
                 ->where('is_deleted', false)
                 ->orderBy('created_at', 'desc')
@@ -127,8 +138,6 @@ class StoryController extends Controller
             $bookmarkedStoryIds = auth()->check()
                 ? Bookmark::where('user_id', auth()->user()->id)->pluck('story_id')->toArray()
                 : [];
-
-            // Rest of your code remains the same...
 
             if ($stories->isEmpty()) {
                 return response()->json([
@@ -147,7 +156,7 @@ class StoryController extends Controller
                     'author' => [
                         'user_id' => $story->user->id,
                         'name' => $story->user->fullname,
-                        'avatar' => $story->user->avatar ?? null,
+                        'avatar' => $story->user->avatar ? $story->user->avatar->image_url : null, // Ambil dari multiple_images
                     ],
                     'content' => $story->body,
                     'images' => $story->images->map(function ($image) {
@@ -188,6 +197,8 @@ class StoryController extends Controller
     }
 
 
+
+
     public function spesificStories(Request $request, $category)
     {
         try {
@@ -196,7 +207,7 @@ class StoryController extends Controller
             $search = $request->query('search');
 
             $token = $request->bearerToken();
-            $user = $request->user(); // Ambil data user yang sedang login, bisa pake ini instead of yang di atas
+            $user = $request->user(); // Ambil data user yang sedang login
 
             if ($token) {
                 $checkToken = PersonalAccessToken::findToken($token);
@@ -207,7 +218,12 @@ class StoryController extends Controller
             }
 
             $stories = Story::where('is_deleted', false)
-                ->with(['user:id,fullname,avatar', 'images', 'category:id,name'])
+                ->with([
+                    'user:id,fullname', // Hapus avatar dari sini
+                    'user.avatar',      // Ambil avatar dari multiple_images
+                    'images',
+                    'category:id,name'
+                ])
                 ->when($category !== 'all-story', function ($query) use ($category) {
                     $query->whereHas('category', function ($q) use ($category) {
                         $q->where('name', $category);
@@ -266,6 +282,7 @@ class StoryController extends Controller
         }
     }
 
+
     /**
      * Show the form for creating a new resource.
      */
@@ -277,12 +294,6 @@ class StoryController extends Controller
     // LIA CODE NEW
     public function getStoriesByCategory(Request $request)
     {
-        // ==============================================
-        // KODE INI BUAT NENTUIN APAKAH USER SUDAH LOGIN ATAU BELUM SECARA MANUAL
-        // MENGGUNAKAN PERSONAL ACCESS TOKEN YANG DIKIRIMKAN
-        // JIKA BELUM LOGIN MAKA $USER AKAN NULL
-        // JIKA SUDAH LOGIN MAKA $USER AKAN BERISI DATA USER
-
         try {
             $token = $request->bearerToken();
             $user = null;
@@ -298,9 +309,13 @@ class StoryController extends Controller
             $categories = Category::select('id', 'name')
                 ->with(['stories' => function ($query) {
                     $query->where('is_deleted', false)
-                        ->with(['images' => function ($q) {
-                            $q->select('id', 'related_id', 'related_type', 'image_url', 'identifier');
-                        }])
+                        ->with([
+                            'images' => function ($q) {
+                                $q->select('id', 'related_id', 'related_type', 'image_url', 'identifier');
+                            },
+                            'user:id,fullname',  // Ambil user tanpa avatar
+                            'user.avatar'        // Ambil avatar dari multiple_images
+                        ])
                         ->select([
                             'stories.id',
                             'stories.title',
@@ -309,8 +324,7 @@ class StoryController extends Controller
                             'stories.category_id',
                             'stories.created_at',
                             'stories.user_id'
-                        ])
-                        ->with('user:id,fullname,avatar');
+                        ]);
                 }])
                 ->get();
 
@@ -347,6 +361,7 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * Store a newly created resource in storage.
@@ -438,7 +453,6 @@ class StoryController extends Controller
      */
     public function show(Request $request, string $slug)
     {
-
         $token = $request->bearerToken();
         $user = null;
 
@@ -451,7 +465,13 @@ class StoryController extends Controller
         }
 
         try {
-            $story = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images', 'bookmarks'])
+            $story = Story::with([
+                'category:id,name',
+                'user:id,fullname',
+                'user.avatar', // Ambil avatar dari multiple_images
+                'images',
+                'bookmarks'
+            ])
                 ->where('is_deleted', false)
                 ->where('slug', $slug)
                 ->first();
@@ -465,13 +485,18 @@ class StoryController extends Controller
                 ], 404);
             }
 
-            $similarStories = Story::with(['category:id,name', 'user:id,fullname,avatar', 'images', 'bookmarks'])
+            $similarStories = Story::with([
+                'category:id,name',
+                'user:id,fullname',
+                'user.avatar', // Sama, ambil avatar dari multiple_images
+                'images',
+                'bookmarks'
+            ])
                 ->where('category_id', $story->category_id)
                 ->where('id', '!=', $story->id)
                 ->limit(5)
                 ->get();
 
-            // Pass the user to transformStoryData
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
@@ -490,6 +515,7 @@ class StoryController extends Controller
             ], 500);
         }
     }
+
 
 
     /**

@@ -23,7 +23,12 @@ class BookmarkController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->with(['story' => function ($query) {
                     $query->where('is_deleted', false)
-                        ->with(['user:id,fullname,avatar', 'images', 'category:id,name']);
+                        ->with([
+                            'user:id,fullname', // Hapus avatar dari sini
+                            'user.avatar',      // Ambil avatar dari multiple_images
+                            'images',
+                            'category:id,name'
+                        ]);
                 }])
                 ->paginate($perPage, ['*'], 'page', $page);
 
@@ -46,7 +51,7 @@ class BookmarkController extends Controller
                     'author' => [
                         'user_id' => $bookmark->story->user->id,
                         'name' => $bookmark->story->user->fullname,
-                        'avatar' => $bookmark->story->user->avatar,
+                        'avatar' => $bookmark->story->user->avatar ? $bookmark->story->user->avatar->image_url : null, // Ambil dari multiple_images
                     ],
                     'content' => $bookmark->story->body,
                     'images' => $bookmark->story->images->map(fn($image) => [
@@ -83,6 +88,7 @@ class BookmarkController extends Controller
             ], 500);
         }
     }
+
 
 
     /**
