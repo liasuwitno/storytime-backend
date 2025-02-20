@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MultipleImage;
 use App\Models\User;
 use CaliCastle\Cuid;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -169,20 +171,18 @@ class UserController extends Controller
     {
         try {
             $currentUser = auth()->user();
+            $this->authorize('update', $currentUser);
 
             // Validasi tanpa wajib mengisi password
-            $request->validate(
-                [
-                    'fullname' => 'required|string|max:100',
-                    'old_password' => 'nullable|string|min:8', // Jadi nullable
-                    'new_password' => 'nullable|string|confirmed|min:8', // Jadi nullable
-                    'bio' => 'nullable|string',
-                    'avatar' => 'nullable|string'
-                ],
-                [
-                    'fullname.required' => 'Fullname tidak boleh kosong',
-                ]
-            );
+            $request->validate([
+                'fullname' => 'required|string|max:100',
+                'old_password' => 'nullable|string|min:8',
+                'new_password' => 'nullable|string|confirmed|min:8',
+                'bio' => 'nullable|string',
+                'avatar' => 'nullable|string'
+            ], [
+                'fullname.required' => 'Fullname tidak boleh kosong',
+            ]);
 
             $user = User::where('id', $currentUser->id)->firstOrFail();
 
@@ -197,7 +197,6 @@ class UserController extends Controller
                     ], 422);
                 }
 
-                // Cek apakah password lama cocok
                 if (!Hash::check($request->old_password, $user->password)) {
                     return response()->json([
                         'code' => 422,
@@ -207,23 +206,59 @@ class UserController extends Controller
                     ], 422);
                 }
 
-                // Update password
                 $user->password = Hash::make($request->new_password);
             }
 
-            // Update nama, bio, dan avatar tanpa masalah
-            $user->fullname = $request->fullname;
-            $user->bio = $request->bio;
-            $user->avatar = $request->avatar;
-            $user->save();
+            DB::beginTransaction();
+
+            $user->update([
+                'fullname' => $request->fullname,
+                'bio' => $request->bio,
+            ]);
+
+            // Avatar hanya diperbarui jika diberikan dalam request
+            if ($request->has('avatar')) {
+                $newAvatar = $request->avatar;
+
+                // Cek apakah user sudah punya avatar sebelumnya
+                $existingAvatar = MultipleImage::where('related_id', $currentUser->id)
+                    ->where('related_type', User::class)
+                    ->where('identifier', 'avatar')
+                    ->first();
+
+                if ($existingAvatar) {
+                    // Jika avatar berubah, hapus avatar lama dan tambahkan yang baru
+                    if ($existingAvatar->image_url !== $newAvatar) {
+                        $existingAvatar->delete();
+
+                        MultipleImage::create([
+                            'related_id' => $currentUser->id,
+                            'related_type' => User::class,
+                            'image_url' => $newAvatar,
+                            'identifier' => 'avatar'
+                        ]);
+                    }
+                } else {
+                    // Jika belum ada avatar, tambahkan baru
+                    MultipleImage::create([
+                        'related_id' => $currentUser->id,
+                        'related_type' => User::class,
+                        'image_url' => $newAvatar,
+                        'identifier' => 'avatar'
+                    ]);
+                }
+            }
+
+            DB::commit();
 
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
                 'data' => null,
-                'message' => 'Profile berhasil di update',
+                'message' => 'Profile berhasil diupdate!',
             ], 200);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'code' => 500,
                 'status' => 'error',
@@ -234,15 +269,18 @@ class UserController extends Controller
     }
 
 
+
+
     public function profileUser()
     {
         try {
             $auth = auth()->user();
+            $this->authorize('view', $auth);
+            // Ambil user beserta avatarnya
+            $user = User::where('id', $auth->id)
+                ->with('avatar') // Ambil avatar dengan morphOne
+                ->first();
 
-            // Cari user berdasarkan unique_id
-            $user = User::where('id', $auth->id)->first();
-
-            // Jika user tidak ditemukan, kembalikan error
             if (!$user) {
                 return response()->json([
                     'code' => 404,
@@ -252,15 +290,19 @@ class UserController extends Controller
                 ], 404);
             }
 
-            // Jika ditemukan, kembalikan data user
             return response()->json([
                 'code' => 200,
                 'status' => 'success',
-                'data' => $user,
+                'data' => [
+                    'id' => $user->id,
+                    'fullname' => $user->fullname,
+                    'email' => $user->email,
+                    'bio' => $user->bio,
+                    'avatar' => $user->avatar->image_url ?? null // Pastikan ada image_url di multiple_images
+                ],
                 'message' => 'Profil user berhasil diambil.',
             ], 200);
         } catch (\Exception $e) {
-            // Jika ada error lain, kembalikan respons error
             return response()->json([
                 'code' => 500,
                 'status' => 'error',

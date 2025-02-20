@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\StoryCreateEvent;
 use App\Http\Requests\StoreStoryRequest;
 use App\Http\Requests\UpdateStoryRequest;
 use App\Models\Bookmark;
@@ -195,7 +196,7 @@ class StoryController extends Controller
             $search = $request->query('search');
 
             $token = $request->bearerToken();
-            $user = null;
+            $user = $request->user(); // Ambil data user yang sedang login, bisa pake ini instead of yang di atas
 
             if ($token) {
                 $checkToken = PersonalAccessToken::findToken($token);
@@ -403,7 +404,7 @@ class StoryController extends Controller
             ];
 
             // JIKA SUDAH DI TAMBAHKAN LALU KIRIM NOTIFIKASI KE USER
-            // StoryCreateEvent::dispatch($contents);
+            StoryCreateEvent::dispatch($contents);
             DB::commit();
 
             return response()->json([

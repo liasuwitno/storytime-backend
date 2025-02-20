@@ -21,7 +21,6 @@ class User extends Authenticatable
         'username',
         'fullname',
         'email',
-        'avatar',
         'bio',
         'status',
         'is_deleted',
@@ -53,6 +52,10 @@ class User extends Authenticatable
     public function hasStories()
     {
         return $this->stories()->exists();
+    }
+    public function avatar()
+    {
+        return $this->morphOne(MultipleImage::class, 'related', 'related_type', 'related_id');
     }
 
     /**

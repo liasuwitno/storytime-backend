@@ -25,22 +25,24 @@ Route::get('/health', function () {
         'data' => null
     ], 200);
 });
-
+//19 API
 Route::post('/login', [UserController::class, 'login'])->name('login');
 Route::post('/register', [UserController::class, 'store'])->name('register');
 
 // CATEGORY PUBLIC ====>
 Route::get('/categories-all', [CategoryController::class, 'index']);
 
-//NOTIFICATIONS ====>
-Route::get('/notifications', [NotificationController::class, 'index']);
 //STORY PUBLIC
-Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']);
+Route::get('/story-categories', [StoryController::class, 'getStoriesByCategory']); 
 Route::get('/story-detail/{slug}', [StoryController::class, 'show']);
-Route::get('/spesific-stories/{category}', [StoryController::class, 'spesificStories']);
+Route::get('/spesific-stories/{category}', [StoryController::class, 'spesificStories']); //desc, asc
 Route::get('/latest-stories', [StoryController::class, 'index']);
 
-Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
+Route::middleware('auth:sanctum')->group(function () {
+
+    //NOTIFICATIONS ====>
+    Route::get('/notifications', [NotificationController::class, 'index']);
+
     // CATEGORY ====>
     Route::apiResource('categories', CategoryController::class)->except(['index']);
 
@@ -61,6 +63,5 @@ Route::middleware('auth:sanctum', 'check-sanctum-token')->group(function () {
     Route::delete('/story-delete/{id}', [StoryController::class, 'deleteStory']);
 
     // UPLOAD FILE GENERAL ====>
-    Route::post('/upload-file/{folder}', [UploadFileController::class, 'uploadFile']);
     Route::post('/upload-file-single/{folder}', [UploadFileController::class, 'uploadFileSingle']);
 });

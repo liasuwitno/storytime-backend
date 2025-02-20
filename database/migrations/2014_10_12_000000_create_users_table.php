@@ -17,7 +17,6 @@ return new class extends Migration
             $table->string('email', 80)->unique();
             $table->string('fullname', 100);
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('avatar')->nullable();
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->boolean('is_deleted')->default(false);
             $table->text('bio')->nullable();
